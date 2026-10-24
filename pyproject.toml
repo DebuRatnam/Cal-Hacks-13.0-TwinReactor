@@ -18,11 +18,12 @@ dependencies = [
 [project.optional-dependencies]
 model = ["torch", "nvidia-physicsnemo>=2.2", "sympy"]
 backend = ["fastapi", "uvicorn[standard]", "pydantic>=2"]
+agent = ["anthropic>=2.3"]
 dev = ["pytest", "ruff"]
 # OpenMC is not on PyPI; install via conda (see environment.yml).
 
 [tool.setuptools.packages.find]
-include = ["datagen*", "model*", "backend*"]
+include = ["datagen*", "model*", "backend*", "agent*"]
 
 [tool.ruff]
 line-length = 100
