@@ -79,8 +79,10 @@ Reject physically invalid configs (e.g. `k_eff` far outside ~0.8–1.4) and log 
 
 ## Model
 
+- Framework: NVIDIA PhysicsNeMo (add as a dependency when ML work starts). Prefer its built-in
+  architectures (e.g. FNO, physics-informed losses) over hand-rolled ones.
 - Inputs are grid-structured → start with a U-Net or Fourier Neural Operator (FNO); a small CNN
-  head regresses `k_eff`.
+  head regresses `k_eff`. `model/unet.py` is a shape-only placeholder.
 - Normalize targets (flux per-group, `k_eff` as Δ from 1.0). Store normalization stats with the checkpoint.
 - Metrics to report: `k_eff` error in **pcm** (1 pcm = 1e-5), max/RMS relative power error,
   peaking factor error. Target: |Δk| < 100 pcm, max power error < ~2–5%.
