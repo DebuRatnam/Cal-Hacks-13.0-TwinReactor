@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.DS_Store
+
+# Generated data and model artifacts
+data/*
+!data/.gitkeep
+checkpoints/
+runs/
+
+# OpenMC outputs
+*.h5
+statepoint.*.h5
+summary.h5
+tallies.out
+*.xml
+!datagen/configs/*.xml
+
+# Frontend
+node_modules/
+dist/

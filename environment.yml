@@ -1,0 +1,9 @@
+name: pwr-surrogate
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - openmc
+  - pip
+  - pip:
+      - -e .[model,backend,dev]

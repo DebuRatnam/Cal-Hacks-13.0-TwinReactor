@@ -1,0 +1,12 @@
+# Small end-to-end slice config. Widen ranges once the pipeline works.
+name: quarter_core_small
+version: v0
+seed: 0
+n_samples: 500
+n_groups: 2
+grid_shape: [9, 9]      # quarter core, assemblies
+pitch_cm: 21.5
+n_fuel_types: 3
+continuous:
+  enrichment_wt: [1.6, 5.0]
+  boron_ppm: [0, 1500]
