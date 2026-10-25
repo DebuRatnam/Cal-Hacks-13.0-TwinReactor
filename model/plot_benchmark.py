@@ -20,19 +20,9 @@ def render(root):
         "ridge": "PCA + Ridge",
         "extra_trees": "PCA + Extra Trees",
         "mlp": "PCA + MLP",
-        "cnn": "CNN",
         "fno": "FNO",
     }
-    colors = [
-        "#8C949C"
-        if n == "mean"
-        else "#D77B28"
-        if n == "fno"
-        else "#34876C"
-        if n == "cnn"
-        else "#2878A3"
-        for n in names
-    ]
+    colors = ["#8C949C" if n == "mean" else "#D77B28" if n == "fno" else "#2878A3" for n in names]
     plt.rcParams.update({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False})
     fig, axes = plt.subplots(1, 3, figsize=(14.4, 5.2), layout="constrained")
     measures = [
@@ -69,8 +59,8 @@ def render(root):
     )
     fig.savefig(root / "comparison.png", dpi=170)
     plt.close(fig)
-    fig, axes = plt.subplots(1, 2, figsize=(10.5, 4), layout="constrained")
-    for ax, name in zip(axes, ["cnn", "fno"]):
+    fig, axes = plt.subplots(1, 1, figsize=(5.5, 4), layout="constrained")
+    for ax, name in zip([axes], ["fno"]):
         history = json.loads((root / name / "history.json").read_text())
         ax.plot(
             [h["epoch"] for h in history],
@@ -107,13 +97,13 @@ def render(root):
     lines.extend(
         [
             "",
-            "Classical pipelines use train-only input PCA (64 modes), output PCA (40 modes), and separate field/k regressors. CNN/FNO use the full coefficient grids and predict full fields. This compares practical pipelines, not PCA's isolated effect on a fixed architecture.",
+            "Classical pipelines use train-only input PCA (64 modes), output PCA (40 modes), and separate field/k regressors. The FNO uses the full coefficient grids and predicts full fields. This compares practical pipelines, not PCA's isolated effect on a fixed architecture.",
             "",
             f"Output PCA training explained variance: {100 * report['pca']['output_explained_variance']:.3f}%. Held-out oracle field reconstruction error: {100 * oracle['field_relative_l2_mean']:.3f}% mean relative L2. The oracle uses true output coefficients and is not a predictive baseline.",
             "",
             "All scaling/PCA fits use only the selected training cases. Saved validation selects hyperparameters/checkpoints; the test split only reports final performance. No negative-value clipping or post-hoc field renormalization is used for operator predictions. Latency includes scaling and PCA reconstruction where applicable, excludes disk I/O, and is a warmed median over 20 single-case calls. Classical fit times include shared PCA preprocessing; neural fit times include validation and checkpoint writes.",
             "",
-            "This is one small-data run with compact architectures and fixed budgets, not a fully tuned or multi-seed ranking. Results do not establish safety-grade accuracy or full-data scaling. PINN is a separate per-configuration solver; see pinn/result.json if that experiment was run. The existing runtime agent's IAEA placeholder still needs alignment before attaching these checkpoints.",
+            "This is one small-data run with compact architectures and fixed budgets, not a fully tuned or multi-seed ranking. Results do not establish safety-grade accuracy or full-data scaling.",
         ]
     )
     (root / "REPORT.md").write_text("\n".join(lines) + "\n")

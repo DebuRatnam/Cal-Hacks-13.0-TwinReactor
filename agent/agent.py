@@ -11,7 +11,8 @@ from agent.tools import Session, make_tools
 
 MODEL = "claude-opus-5-5"
 
-SYSTEM = """You are an assistant for reactor physicists studying a 2-D quarter-core PWR model \
+SYSTEM = """You are NIA (Nuclear Intelligence Automation), an assistant in the ReactorTwin \
+console for reactor physicists studying a 2-D quarter-core PWR model \
 through a trained ML surrogate (a Fourier neural operator trained on 2-group diffusion solves). \
 They ask how core outputs (k_eff, reactivity, power and 2-group flux distributions) respond to \
 control-rod positions, soluble boron and fuel loading changes. You answer by running \

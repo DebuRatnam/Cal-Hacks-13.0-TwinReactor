@@ -1,4 +1,4 @@
-"""Full-field data for FNO/CNN and case inputs for the existing per-layout PINN."""
+"""Full-field data for the FNO surrogate."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from datagen.physics_contract import N_XS, compact_xs
+from datagen.physics_contract import N_XS
 from datagen.schema import read_metadata
 
 
@@ -99,48 +99,3 @@ class CoreDataset(Dataset):
             "gamma": self.meta.boundary_gamma,
             "void": ~batch["mask"],
         }
-
-    def pinn_case(self, i: int):
-        """Exact case, physical coordinates and reference with mean source = 1."""
-        with h5py.File(self.data_dir / "samples.h5", "r") as f:
-            if "xs" not in f:
-                raise ValueError("PINN requires resolved coefficients, not just material IDs")
-            idx = int(self.indices[i])
-            xs = f["xs"][idx].astype(np.float64)
-            mask = f["mask"][idx].astype(bool)
-            phi = f["flux"][idx].astype(np.float64)
-            k_eff = float(f["k_eff"][idx])
-        ids, table, void_id = compact_xs(xs, mask)
-        source = xs[4] * phi[0] + xs[5] * phi[1]
-        scale = float(source[mask].mean())
-        if not scale > 0:
-            raise ValueError("Reference has no fission source")
-        y, x = np.indices(mask.shape)
-        coords = np.stack(
-            [(x[mask] + 0.5) * self.meta.pitch_cm, (y[mask] + 0.5) * self.meta.pitch_cm], axis=1
-        )
-        return {
-            "material_map": ids,
-            "xs_table": torch.as_tensor(table, dtype=torch.float32),
-            "void_id": void_id,
-            "pitch_cm": self.meta.pitch_cm,
-            "bc": dict(self.meta.bc),
-            "gamma": self.meta.boundary_gamma,
-            "reference": {
-                "coordinates_cm": coords,
-                "flux_points": (phi[:, mask] / scale).T,
-                "flux_grid": phi / scale,
-                "source_normalization_scale": scale,
-                "k_eff": k_eff,
-                "mask": mask,
-            },
-        }
-
-    def make_pinn_problem(self, i: int, **kwargs):
-        from model.pinn import PINNProblem
-
-        case = self.pinn_case(i)
-        reference = case.pop("reference")
-        # Interface smoothing remains an explicit PINN approximation, not an
-        # implicit transformation of the saved solver coefficients.
-        return PINNProblem(**case, **kwargs), reference

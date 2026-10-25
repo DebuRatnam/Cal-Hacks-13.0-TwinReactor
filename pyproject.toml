@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-model = ["torch", "nvidia-physicsnemo>=2.2", "sympy"]
+model = ["torch", "nvidia-physicsnemo>=2.2"]
 benchmark = ["scikit-learn", "matplotlib", "joblib"]
 backend = ["fastapi", "uvicorn[standard]", "pydantic>=2"]
 agent = ["anthropic>=2.3"]

@@ -1,8 +1,7 @@
-"""Shape tests for the PhysicsNeMo surrogates and analytic checks of the 2-group physics residuals."""
+"""Shape tests for the PhysicsNeMo FNO surrogate and analytic checks of the 2-group physics residuals."""
 
 import math
 
-import numpy as np
 import pytest
 
 torch = pytest.importorskip("torch")
@@ -23,10 +22,9 @@ FUEL = torch.tensor([1.5, 0.4, 0.03 + 0.02 + 1.5 * 0.8e-4, 0.08 + 0.4 * 0.8e-4, 
 ALL_REFLECTIVE = dict(west="reflective", east="reflective", south="reflective", north="reflective")
 
 
-@pytest.mark.parametrize("name", ["fno", "cnn"])
 @pytest.mark.parametrize("hw", [(9, 9), (8, 11)])
-def test_grid_model_shapes(name, hw):
-    model = build_model(name, in_channels=N_XS)
+def test_fno_shapes(hw):
+    model = build_model("fno", in_channels=N_XS)
     out = model(torch.randn(3, N_XS, *hw))
     assert out["flux"].shape == (3, 2, *hw)
     assert out["power"].shape == (3, *hw)
@@ -61,42 +59,3 @@ def test_fv_cosine_mode_converges():
     k_fv = rayleigh_k(flux, xs, h, gamma=1e9)
     assert abs(float(k_fv - k_exact)) * 1e5 < 50  # pcm
     assert physics_loss(flux, k_exact.view(1), xs, h, gamma=1e9) < 1e-4
-
-
-def test_pinn_residual_on_analytic_mode():
-    """PhysicsNeMo autodiff residual of the analytic cosine mode is ~0 away from cell edges."""
-    from physicsnemo.sym.eq.phy_informer import PhysicsInformer
-
-    from model.physics import TwoGroupDiffusion
-
-    L = 100.0
-    D1, D2, sr1, sr2, nf1, nf2, s12 = FUEL.tolist()
-    B = math.pi / (2 * L)
-    ratio = s12 / (D2 * 2 * B**2 + sr2)
-    k_exact = (nf1 + nf2 * ratio) / (D1 * 2 * B**2 + sr1)
-
-    xy = (torch.rand(256, 2, dtype=torch.float64) * L).requires_grad_(True)
-    mode = torch.cos(B * xy[:, :1]) * torch.cos(B * xy[:, 1:])
-    ones = torch.ones_like(mode)
-    xs = {n: v * ones for n, v in zip(("D1", "D2", "sig_r1", "sig_r2", "nu_sig_f1", "nu_sig_f2", "sig_s12"), FUEL.tolist())}
-    # D must depend on coordinates for the autodiff graph; add an exact-zero dependence.
-    xs["D1"] = xs["D1"] + 0 * xy[:, :1]
-    xs["D2"] = xs["D2"] + 0 * xy[:, :1]
-    pi = PhysicsInformer(["diffusion_fast", "diffusion_thermal"], TwoGroupDiffusion(), grad_method="autodiff")
-    res = pi.forward({"coordinates": xy, "phi1": mode, "phi2": ratio * mode, "k": k_exact * ones, **xs})
-    assert res["diffusion_fast"].abs().max() < 1e-10
-    assert res["diffusion_thermal"].abs().max() < 1e-10
-
-
-def test_pinn_problem_losses_backprop():
-    from model.pinn import PINNProblem
-
-    mat = np.array([[0, 0, 1], [0, 0, 1], [1, 1, 2]])  # 2 = void corner
-    table = torch.stack([FUEL, FUEL * torch.tensor([1, 1, 1, 1, 0, 0, 1.0])])
-    prob = PINNProblem(mat, table, pitch_cm=20.0, void_id=2)
-    model = prob.make_model(layer_size=16, num_layers=2)
-    losses = prob.losses(model, n_interior=128, n_boundary=64)
-    losses["total"].backward()
-    assert model.log_k.grad is not None
-    assert all(torch.isfinite(v) for v in losses.values())
-    assert prob.evaluate_grid(model, n_per_cell=2).shape == (2, 3, 3)

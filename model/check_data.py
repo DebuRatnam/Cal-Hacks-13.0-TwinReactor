@@ -78,7 +78,6 @@ def check(data_dir: Path, models: bool = False) -> dict:
     report["architectures"] = {}
     for name, opts in (
         ("fno", {"latent_channels": 8, "num_fno_layers": 1, "num_fno_modes": 3}),
-        ("cnn", {"conv_layer_size": 8, "n_blocks": 1, "n_downsampling": 1}),
     ):
         net = build_model(name, in_channels=ds.in_channels, **opts)
         pred = net(batch["x"])
@@ -120,20 +119,6 @@ def check(data_dir: Path, models: bool = False) -> dict:
     report["max_absolute_rayleigh_k_error"] = max_rayleigh_error
     assert max_sample_residual < 1e-10
     assert max_rayleigh_error < 1e-6
-    interface_width_cm = 0.5
-    problem, reference = ds.make_pinn_problem(0, interface_width_cm=interface_width_cm)
-    pinn = problem.make_model(layer_size=16, num_layers=2)
-    losses = problem.losses(pinn, n_interior=32, n_boundary=16)
-    losses["total"].backward()
-    assert all(torch.isfinite(value) for value in losses.values())
-    assert pinn.log_k.grad is not None and torch.isfinite(pinn.log_k.grad)
-    report["architectures"]["pinn"] = {
-        "forward_and_backward": "passed",
-        "mode": "one configuration",
-        "reference_points": list(reference["flux_points"].shape),
-        "interface_width_cm": interface_width_cm,
-        "caveat": "Existing PINN smooths material interfaces; this check verifies its data interface, not trained accuracy",
-    }
     report["packages"]["nvidia-physicsnemo"] = importlib.metadata.version("nvidia-physicsnemo")
     report["training_performed"] = False
     return report

@@ -232,12 +232,7 @@ function renderTable() {
   }).join("");
 }
 function renderBanners() {
-  const c = cfg();
-  document.getElementById("staleBanner").hidden = !c.stale;
-  const w = c.result && !c.stale ? c.result.warnings : [];
-  const ood = document.getElementById("oodBanner");
-  ood.hidden = !w.length;
-  ood.innerHTML = w.length ? `<span><b>Check this prediction.</b> ${w.map(esc).join(" ")}</span>` : "";
+  document.getElementById("staleBanner").hidden = !cfg().stale;
 }
 function renderAll() {
   document.getElementById("boron").value = cfg().boron;
@@ -449,6 +444,38 @@ document.getElementById("export").onclick = () => {
 const msgs = document.getElementById("msgs");
 const CHAT_ID = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));  // one conversation per page load
 function addMsg(kind, html) { const d = document.createElement("div"); d.className = "msg " + kind; d.innerHTML = html; msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return d; }
+// NIA's thinking indicator: a small robot (after the ReactorTwin mascot sketch) with a spinning
+// radiation-trefoil chest core and electrons orbiting like an atom.
+function trefoil(r1, r2) {
+  const p = (r, a) => `${(r * Math.cos(a)).toFixed(2)} ${(r * Math.sin(a)).toFixed(2)}`;
+  return [0, 1, 2].map((k) => {
+    const a0 = (k * 120 - 120) * Math.PI / 180, a1 = a0 + Math.PI / 3;
+    return `M${p(r1, a0)}L${p(r2, a0)}A${r2} ${r2} 0 0 1 ${p(r2, a1)}L${p(r1, a1)}A${r1} ${r1} 0 0 0 ${p(r1, a0)}Z`;
+  }).join("");
+}
+const ORBIT = (rot) => `<g transform="rotate(${rot} 60 62)"><ellipse cx="60" cy="62" rx="56" ry="15" fill="none" stroke="rgba(127,243,255,0.28)" stroke-width="1"/>`
+  + `<circle class="nia-orbit-dot" r="2.6" fill="#7ff3ff"><animateMotion dur="${rot ? 2.6 : 3.4}s" repeatCount="indefinite" path="M4 62a56 15 0 1 0 112 0a56 15 0 1 0 -112 0"/></circle></g>`;
+const NIA_SVG = `<svg class="nia-svg" viewBox="0 0 120 124" aria-hidden="true">
+  ${ORBIT(-28)}${ORBIT(28)}
+  <g class="nia-bot">
+    <rect class="nia-arm" x="23" y="70" width="9" height="24" rx="4.5" fill="#d3dbe4"/>
+    <rect x="88" y="70" width="9" height="24" rx="4.5" fill="#d3dbe4"/>
+    <circle cx="41" cy="106" r="8" fill="#c3ccd6"/><circle cx="79" cy="106" r="8" fill="#c3ccd6"/>
+    <rect x="34" y="64" width="52" height="40" rx="12" fill="#e9eef3"/>
+    <circle cx="60" cy="81" r="10.5" fill="#0b1220"/>
+    <circle class="nia-glow" cx="60" cy="81" r="10.5" fill="none" stroke="#f5c542" stroke-width="1.6"/>
+    <g transform="translate(60 81)"><path class="nia-core" d="${trefoil(2.6, 8)}" fill="#f5c542"/><circle r="1.6" fill="#f5c542"/></g>
+    <rect class="nia-glow" x="46" y="95" width="28" height="4" rx="2" fill="#5598e7"/>
+    <rect class="nia-glow" x="44" y="59" width="32" height="5" rx="2.5" fill="#7ff3ff"/>
+    <rect x="22" y="26" width="9" height="22" rx="4.5" fill="#b7c1cd"/><rect x="89" y="26" width="9" height="22" rx="4.5" fill="#b7c1cd"/>
+    <rect x="28" y="10" width="64" height="52" rx="22" fill="#f2f5f8"/>
+    <rect x="35" y="18" width="50" height="37" rx="15" fill="#0b1220"/>
+    <g class="nia-eyes"><rect class="nia-eye" x="47" y="29" width="7" height="14" rx="3.5" fill="#7ff3ff"/><rect class="nia-eye" x="66" y="29" width="7" height="14" rx="3.5" fill="#7ff3ff"/></g>
+  </g>
+</svg>`;
+function addThinking() {
+  return addMsg("bot nia-thinking", `${NIA_SVG}<div class="nia-label"><b>NIA</b><span>Thinking <span class="nia-dots"><span></span><span></span><span></span></span></span></div>`);
+}
 function addTools(calls) {
   if (!calls.length) return;
   const label = (c) => c.name === "evaluate_configurations" ? `evaluate · ${c.input.configurations?.length ?? "?"} configs`
@@ -501,7 +528,7 @@ document.getElementById("composer").addEventListener("submit", async (e) => {
   e.preventDefault(); const t = document.getElementById("ask"), q = t.value.trim(); if (!q || chatBusy) return;
   if (!CORE) { toast("The backend isn't connected."); return; }
   chatBusy = true; addMsg("user", esc(q)); t.value = "";
-  const wait = addMsg("sys", "Working… (planning cases and running the surrogate)");
+  const wait = addThinking();
   const send = document.querySelector("#composer button"); send.disabled = true;
   try {
     const c = cfg();
@@ -519,7 +546,6 @@ document.getElementById("ask").addEventListener("keydown", (e) => { if (e.key ==
 async function initConsole() {
   try { CORE = await api("/core"); }
   catch (e) {
-    document.getElementById("modelPill").innerHTML = `<span class="dot"></span>Model: backend unreachable`;
     document.getElementById("sourceNote").textContent = "Couldn't reach the backend. Start it with `uvicorn backend.app:app` and open this page from http://127.0.0.1:8000/.";
     return;
   }
@@ -534,9 +560,6 @@ async function initConsole() {
     };
   }
   const md = CORE.model;
-  document.getElementById("modelPill").innerHTML = `<span class="dot" style="background:var(--accent)"></span>Model: ${esc(md.name)}`;
-  const acc = document.getElementById("accPill"); acc.hidden = false;
-  acc.textContent = `Test (${md.test_samples} cores): k MAE ${fmt(md.test_k_mae_pcm, 0)} pcm · p95 ${fmt(md.test_k_p95_pcm, 0)} pcm · power L2 ${fmt(md.test_power_rel_l2 * 100, 1)}%`;
   document.getElementById("sourceNote").textContent =
     `Surrogate: ${md.name}, trained on dataset ${md.dataset} (${md.xs_source}). ${CORE.scope} `
     + `Mesh ${CORE.mesh.shape.join("×")} (${CORE.mesh.cell_cm} cm cells, ${CORE.mesh.cells_per_assembly} per ${CORE.assembly_pitch_cm} cm assembly); maps show assembly means. `

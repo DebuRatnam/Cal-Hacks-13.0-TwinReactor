@@ -1,4 +1,4 @@
-"""2-D, 2-group neutron diffusion physics shared by all models.
+"""2-D, 2-group neutron diffusion physics used by the FNO's physics loss and checks.
 
 Steady-state k-eigenvalue problem (no upscatter, all fission neutrons born fast, chi = [1, 0]):
 
@@ -8,11 +8,8 @@ Steady-state k-eigenvalue problem (no upscatter, all fission neutrons born fast,
 Sr_g is the removal XS (absorption + out-scatter, plus D_g B_z^2 axial buckling if the XS set
 includes it). Units: cm, cm^-1.
 
-Two residual implementations:
-- `fv_residual`: batched cell-centered finite-volume residual on the numerical grid (FNO/CNN
-  physics loss). Harmonic-mean interface D, same as a standard FV diffusion code.
-- `TwoGroupDiffusion` / `DiffusionBC`: symbolic PhysicsNeMo PDEs for pointwise autodiff
-  residuals (PINN).
+`fv_residual`: batched cell-centered finite-volume residual on the numerical grid (FNO
+physics loss). Harmonic-mean interface D, same as a standard FV diffusion code.
 
 Confirmed datagen convention: tensors are [..., H, W], index [i, j] = [y, x].
 Row 0 is the southernmost cell row; column 0 is west. Cell centers are
@@ -24,8 +21,6 @@ tests/test_data_compatibility.py and docs/DATA_HANDOFF.md for verification.
 from __future__ import annotations
 
 import torch
-from physicsnemo.sym.eq.pde import PDE
-from sympy import Function, Symbol
 
 from datagen.physics_contract import MARSHAK, QUARTER_CORE_BC, XS_FIELDS
 
@@ -41,7 +36,7 @@ def xs_maps(material_map: torch.Tensor, xs_table: torch.Tensor) -> torch.Tensor:
 
     For v3 data use batch['xs'] directly: semantic material IDs do not encode
     the case's boron and local rod states. compact_xs supplies matching physics
-    IDs/table when that representation is needed (e.g. a per-case PINN).
+    IDs/table when that representation is needed.
     """
     return xs_table[material_map].permute(0, 3, 1, 2)
 
@@ -155,50 +150,6 @@ def rayleigh_k(flux, xs, h_cm, bc=QUARTER_CORE_BC, gamma=MARSHAK, void=None) -> 
         fission = fission.masked_fill(void, 0.0)
         loss1 = loss1.masked_fill(void, 0.0)
     return fission.flatten(1).sum(1) / loss1.flatten(1).sum(1)
-
-
-class TwoGroupDiffusion(PDE):
-    """Symbolic 2-group diffusion PDE for PhysicsNeMo's `PhysicsInformer`.
-
-    Inputs (all [N, 1] functions of (x, y)): phi1, phi2, and the XS fields in XS_FIELDS; `k` is a
-    scalar input broadcast to [N, 1]. XS fields must be differentiable functions of the
-    coordinates (D_g gradients enter via the conservative form).
-    """
-
-    name = "TwoGroupDiffusion"
-
-    def __init__(self):
-        self.dim = 2
-        x, y = Symbol("x"), Symbol("y")
-        phi1, phi2 = Function("phi1")(x, y), Function("phi2")(x, y)
-        D1, D2, sr1, sr2, nf1, nf2, s12 = (Function(n)(x, y) for n in XS_FIELDS)
-        k = Symbol("k")
-
-        def div_D_grad(D, phi):
-            return (D * phi.diff(x)).diff(x) + (D * phi.diff(y)).diff(y)
-
-        self.equations = {
-            "diffusion_fast": -div_D_grad(D1, phi1) + sr1 * phi1 - (nf1 * phi1 + nf2 * phi2) / k,
-            "diffusion_thermal": -div_D_grad(D2, phi2) + sr2 * phi2 - s12 * phi1,
-        }
-
-
-class DiffusionBC(PDE):
-    """Boundary residual D_g dphi_g/dn + gamma phi_g = 0 (gamma = 0 -> reflective).
-
-    Inputs: phi1, phi2, D1, D2, normal_x, normal_y, gamma (outward normal; [N, 1] each).
-    """
-
-    name = "DiffusionBC"
-
-    def __init__(self):
-        self.dim = 2
-        x, y = Symbol("x"), Symbol("y")
-        nx, ny, gamma = Symbol("normal_x"), Symbol("normal_y"), Symbol("gamma")
-        self.equations = {}
-        for g in (1, 2):
-            phi, D = Function(f"phi{g}")(x, y), Function(f"D{g}")(x, y)
-            self.equations[f"bc_{g}"] = D * (nx * phi.diff(x) + ny * phi.diff(y)) + gamma * phi
 
 
 def k_infinity(xs_row: torch.Tensor) -> torch.Tensor:

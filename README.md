@@ -22,9 +22,10 @@ python -m model.check_data --data data/released_5000/material_boron_5000 --model
 pytest
 ```
 
-For the full-field dataset, configurable material/rod inputs, and FNO/CNN/PINN
-adapters, see [the data handoff](docs/DATA_HANDOFF.md). The generation command is
-working; the original training and evaluation entry points remain placeholders.
+For the full-field dataset, configurable material/rod inputs, and the FNO data
+adapter, see [the data handoff](docs/DATA_HANDOFF.md). The surrogate is a PhysicsNeMo
+FNO (`checkpoints/fno_softplus.pt`); train with `python -m model.train`, evaluate with
+`python -m model.evaluate`.
 The [Claude next-steps guide](docs/CLAUDE_DATA_NEXT_STEPS.md) identifies the remaining
 training, normalization, evaluation and runtime-agent integration work. Generation:
 

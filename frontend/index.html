@@ -166,6 +166,13 @@ html.anim [data-reveal]:not(.in) { opacity: 0; transform: translateY(32px); }
 .pwr-facts span { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
 .pwr-facts b { font-family: var(--font-display); font-weight: 350; font-stretch: 110%; font-size: clamp(18px, 2vw, 24px); }
 
+/* fuel assembly animation (MechE CAD) */
+.hw-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr); gap: clamp(28px, 5vw, 80px); align-items: center; }
+@media (max-width: 860px) { .hw-grid { grid-template-columns: minmax(0, 1fr); } }
+.hw-copy { display: grid; gap: 18px; }
+.hw-viz { max-width: 440px; width: 100%; justify-self: center; }
+.hw-viz video { width: 100%; height: auto; max-height: 68vh; aspect-ratio: 600 / 766; object-fit: contain; display: block; border-radius: 6px; background: #1b2a4a; }
+
 /* the twin: sticky core, scrolling steps */
 .twin-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 80px); align-items: start; }
 @media (max-width: 940px) { .twin-grid { grid-template-columns: minmax(0, 1fr); } }
@@ -389,6 +396,28 @@ tr.sel td { background: var(--accent-soft); }
 .suggest { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; }
 .chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; cursor: pointer; color: var(--ink-2); }
 .chip:hover { border-color: var(--accent); color: var(--ink); }
+/* NIA thinking indicator: robot with a spinning trefoil core and orbiting electrons */
+.msg.nia-thinking { display: flex; align-items: center; gap: 12px; padding: 8px 14px 8px 8px; }
+.nia-svg { width: 76px; height: 76px; flex: none; overflow: visible; }
+.nia-label { display: grid; gap: 2px; font-size: 13px; color: var(--ink-2); }
+.nia-label b { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; color: var(--accent-2); font-weight: 500; }
+.nia-dots span { display: inline-block; width: 5px; height: 5px; margin-right: 3px; border-radius: 50%; background: var(--accent); }
+.nia-bot { animation: nia-bob 2.4s ease-in-out infinite; }
+.nia-eyes { animation: nia-scan 3.2s ease-in-out infinite; }
+.nia-eye { transform-box: fill-box; transform-origin: center; animation: nia-blink 4.2s infinite; }
+.nia-core { transform-box: fill-box; transform-origin: center; animation: nia-spin 2.8s linear infinite; }
+.nia-glow { animation: nia-pulse 1.6s ease-in-out infinite; }
+.nia-arm { transform-box: fill-box; transform-origin: 50% 8%; animation: nia-tap 0.9s ease-in-out infinite alternate; }
+.nia-dots span { animation: nia-dot 1.2s ease-in-out infinite; }
+.nia-dots span:nth-child(2) { animation-delay: 0.2s; } .nia-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes nia-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes nia-scan { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-3px); } 65% { transform: translateX(3px); } }
+@keyframes nia-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.12); } }
+@keyframes nia-spin { to { transform: rotate(360deg); } }
+@keyframes nia-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+@keyframes nia-tap { from { transform: rotate(8deg); } to { transform: rotate(-22deg); } }
+@keyframes nia-dot { 0%, 100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .nia-bot, .nia-eyes, .nia-eye, .nia-core, .nia-glow, .nia-arm, .nia-dots span { animation: none; } .nia-orbit-dot { display: none; } }
 .composer { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--line); }
 .composer textarea { flex: 1; min-width: 0; resize: none; height: 42px; padding: 9px 10px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg); }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 6px; font-size: 13px; z-index: 30; max-width: calc(100% - 32px); }
@@ -405,9 +434,9 @@ tr.sel td { background: var(--accent-soft); }
       ReactorTwin
     </a>
     <nav class="nav-links" aria-label="Sections">
-      <a href="#mission">Mission</a><a href="#twin">The twin</a><a href="#capabilities">Capabilities</a><a href="#console">Console</a>
+      <a href="#mission">Mission</a><a href="#twin">The Twin</a><a href="#capabilities">Capabilities</a>
     </nav>
-    <a class="cta" href="#console">Open console</a>
+    <a class="cta" href="#console">Talk to NIA</a>
   </div>
 </header>
 
@@ -420,7 +449,7 @@ tr.sel td { background: var(--accent-soft); }
         <div class="eyebrow later" style="color:var(--accent-2)">AI agent · PWR core physics</div>
         <h1 id="heroTitle"><span class="ln"><span style="--i:0">Designing the reactors</span></span><span class="ln"><span style="--i:1">a <em>clean world</em> runs on.</span></span></h1>
         <p class="lede later">ReactorTwin is an agent that drives a machine-learning simulation of a pressurized water reactor core. It helps engineers design and screen cores in milliseconds, so reactors that bring heat, medicine, clean water and clean fuel reach more communities, sooner.</p>
-        <div class="hero-ctas later"><a class="cta" href="#console">Open the console</a><a class="cta ghost" href="#mission">Why we're building it</a></div>
+        <div class="hero-ctas later"><a class="cta" href="#console">Talk to NIA</a><a class="cta ghost" href="#mission">Why we're building it</a></div>
       </div>
       <div class="hero-foot later"><span><b>2-group</b> diffusion physics</span><span><b>Quarter-core</b> symmetry</span><span><b>Reference solver</b> on demand</span><span>Scroll ↓</span></div>
     </div>
@@ -487,12 +516,28 @@ tr.sel td { background: var(--accent-soft); }
   </div>
 </section>
 
+<section class="band" id="hardware" aria-labelledby="hwTitle">
+  <div class="wrap hw-grid">
+    <div class="hw-copy" data-reveal>
+      <div class="eyebrow">Inside an assembly</div>
+      <h2 class="h2" id="hwTitle">Rods slide in. Water flows up.</h2>
+      <p class="lede">A PWR core is built from fuel assemblies: bundles of fuel rods with guide tubes that control rods drop into. Water flows up through the bundle and carries the heat away. This model shows one simplified assembly with its control rods inserting and its coolant flowing.</p>
+      <p class="lede">The Twin below works one level up: it predicts how the whole core's neutron flux and power respond when banks of these rods go in.</p>
+    </div>
+    <figure class="viz hw-viz" style="margin:0;--d:1" data-reveal>
+      <div class="viz-top"><span>One fuel assembly</span><span>Illustrative</span></div>
+      <video id="hwVideo" src="img/assembly.mp4" poster="img/assembly-poster.jpg" muted loop playsinline preload="metadata" aria-label="Animation of a simplified fuel assembly: three control rods insert from the top while arrows show coolant flowing upward through the rod bundle"></video>
+      <figcaption class="viz-bottom"><span>CAD and flow simulation · MinSeong Choi (SOLIDWORKS)</span><span>Arrows: coolant flow</span></figcaption>
+    </figure>
+  </div>
+</section>
+
 <section class="band" id="twin" aria-labelledby="twinTitle">
   <div class="wrap">
     <div class="twin-grid">
       <div class="twin-steps">
         <div class="tstep on" data-cfg="0"><div class="card">
-          <div class="eyebrow">The twin</div>
+          <div class="eyebrow">The Twin</div>
           <h2 class="h2" id="twinTitle">Move a rod. Watch the core answer.</h2>
           <p class="lede">A full core is 18 × 18 fuel assemblies, mirrored from a quarter-core model. Scroll to insert control rod banks and see the power shift.</p>
         </div></div>
@@ -554,12 +599,8 @@ tr.sel td { background: var(--accent-soft); }
     <div class="console-head" data-reveal>
       <div class="band-head">
         <div class="eyebrow">Console</div>
-        <h2 class="h2" id="consoleTitle">Edit a core. Ask the agent.</h2>
+        <h2 class="h2" id="consoleTitle">Edit a core. Ask NIA.</h2>
         <p class="lede">Move rod banks, repaint assemblies and compare configurations. The assistant sits beside the map and runs the same tools you do.</p>
-      </div>
-      <div class="pills">
-        <span class="pill" id="modelPill"><span class="dot"></span>Model: connecting…</span>
-        <span class="pill" id="accPill" hidden></span>
       </div>
     </div>
 
@@ -613,7 +654,6 @@ tr.sel td { background: var(--accent-soft); }
           <span>This configuration changed since its last prediction. Results below are out of date.</span>
           <button class="btn small" type="button" id="staleRun">Predict</button>
         </div>
-        <div id="oodBanner" class="stale-banner" hidden></div>
         <div class="map-wrap">
           <div>
             <div class="core-frame">
@@ -655,7 +695,7 @@ tr.sel td { background: var(--accent-soft); }
       </div>
 
       <section class="pane chat" aria-label="Assistant">
-        <header><div class="who"><span class="live" aria-hidden="true"></span><h2>ReactorTwin agent</h2></div><span class="hint">Runs configurations for you</span></header>
+        <header><div class="who"><span class="live" aria-hidden="true"></span><h2>NIA</h2></div><span class="hint">Nuclear Intelligence Automation</span></header>
         <div class="msgs" id="msgs"></div>
         <div class="suggest" id="suggest"></div>
         <form class="composer" id="composer">
@@ -671,7 +711,7 @@ tr.sel td { background: var(--accent-soft); }
   <div class="photo"><img src="img/close-sea.jpg" alt="Clear turquoise rock pools on a green coastline" loading="lazy" data-parallax="0.22"></div>
   <div class="wrap">
     <h2 id="closeTitle" data-reveal>Clean energy for every community, designed faster.</h2>
-    <div class="hero-ctas" data-reveal style="--d:1"><a class="cta" href="#console">Open the console</a><a class="cta ghost" href="#top">Back to top</a></div>
+    <div class="hero-ctas" data-reveal style="--d:1"><a class="cta" href="#console">Talk to NIA</a><a class="cta ghost" href="#top">Back to top</a></div>
   </div>
 </section>
 </main>

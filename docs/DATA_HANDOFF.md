@@ -101,7 +101,7 @@ from model.physics import physics_loss, rayleigh_k
 
 ds = CoreDataset.from_split(Path("data/released_5000/material_boron_5000"), "train")
 batch = next(iter(DataLoader(ds, batch_size=16, shuffle=True)))
-net = build_model("fno", in_channels=ds.in_channels)  # "cnn" uses the same contract
+net = build_model("fno", in_channels=ds.in_channels)
 pred = net(batch["x"])  # default x is seven resolved coefficient channels
 loss_pde = physics_loss(pred["flux"], pred["k"] + 1, batch["xs"], **ds.physics_kwargs(batch))
 k_from_flux = rayleigh_k(pred["flux"], batch["xs"], **ds.physics_kwargs(batch))
@@ -115,15 +115,7 @@ physics checks; independent group scaling otherwise corrupts the physical group 
 Mask field losses with `batch['mask']`; use `batch['fuel_mask']` for fuel-power metrics.
 Power is tabulated kappa-fission times flux, mean 1 over fuel, not absolute watts.
 
-```python
-problem, reference = ds.make_pinn_problem(0, interface_width_cm=0.5)
-pinn = problem.make_model()
-```
-
-The PINN trains on **one configuration**, not an operator across layouts. Its adapter builds
-the matching coefficient table and rescales both groups together to mean fission source=1.
-Existing 0.5 cm interface smoothing is an explicit approximation. No final surrogate training
-or PCA fit is included. Trainer/evaluator entry points remain stubs; see `CLAUDE_DATA_NEXT_STEPS.md`.
+The CNN and per-configuration PINN experiments were removed; the FNO is the only model kept.
 
 ## Generate or audit
 

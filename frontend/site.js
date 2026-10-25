@@ -19,6 +19,14 @@ function hideTip() { tip.hidden = true; }
 let toastTimer;
 function toast(msg, ms = 3200) { const t = document.getElementById("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, ms); }
 
+/* ---------- fuel assembly video: play only while on screen, never under reduced motion ---------- */
+{
+  const v = document.getElementById("hwVideo");
+  if (v && !REDUCE) {
+    new IntersectionObserver(([e]) => { if (e.isIntersecting) v.play().catch(() => {}); else v.pause(); }, { threshold: 0.25 }).observe(v);
+  }
+}
+
 /* ---------- hero twin sample data ----------
    Illustration only: stand-in FV solver with placeholder IAEA 2-D XS (not the trained model's core).
    The console below the fold runs the real surrogate. */

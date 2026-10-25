@@ -1,4 +1,4 @@
-"""Supervised full-field CNN/FNO training with train-only scaling and resume."""
+"""Supervised full-field FNO training with train-only scaling and resume."""
 
 from __future__ import annotations
 
@@ -18,9 +18,9 @@ from model.training_data import Normalization, data_signature, prepare
 
 
 def compact_options(model):
-    if model == "fno":
-        return {"latent_channels": 16, "num_fno_layers": 3, "num_fno_modes": 8}
-    return {"conv_layer_size": 16, "n_blocks": 2, "n_downsampling": 2}
+    if model != "fno":
+        raise ValueError(f"unknown model {model!r}; only 'fno' is available")
+    return {"latent_channels": 16, "num_fno_layers": 3, "num_fno_modes": 8}
 
 
 def tensor_data(cases, scaler):
@@ -235,7 +235,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
-    ap.add_argument("--model", choices=["fno", "cnn"], default="fno")
+    ap.add_argument("--model", choices=["fno"], default="fno")
     ap.add_argument("--epochs", type=int, default=50)
     ap.add_argument("--train-samples", type=int, default=500)
     ap.add_argument("--seed", type=int, default=42)

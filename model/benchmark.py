@@ -46,7 +46,7 @@ def run(data_dir, out, train_samples=500, epochs=40, seed=42, threads=4):
             p: importlib.metadata.version(p)
             for p in ("torch", "numpy", "scikit-learn", "nvidia-physicsnemo")
         },
-        "protocol": "One fixed seed. Same 500 training IDs, all saved validation/test IDs. Scaling/PCA fit on selected train only. Model/checkpoint selection uses validation; test only reports final metrics. Classical models use train-only input/output PCA; CNN/FNO predict full fields. Single-case latency includes scaling, prediction and field reconstruction, excludes disk I/O. No clipping or positivity correction of predictions.",
+        "protocol": "One fixed seed. Same 500 training IDs, all saved validation/test IDs. Scaling/PCA fit on selected train only. Model/checkpoint selection uses validation; test only reports final metrics. Classical models use train-only input/output PCA; the FNO predicts full fields. Single-case latency includes scaling, prediction and field reconstruction, excludes disk I/O. No clipping or positivity correction of predictions.",
         "models": {},
     }
     (out / "experiment.json").write_text(json.dumps(report, indent=2))
@@ -68,7 +68,7 @@ def run(data_dir, out, train_samples=500, epochs=40, seed=42, threads=4):
         ),
         "oracle_note": "Uses true held-out output coefficients to measure compression error only; not a predictive model and not used for selection.",
     }
-    for name in ("mean", "ridge", "extra_trees", "mlp", "cnn", "fno"):
+    for name in ("mean", "ridge", "extra_trees", "mlp", "fno"):
         directory = out / name
         directory.mkdir(exist_ok=True)
         print(f"Starting {name}", flush=True)

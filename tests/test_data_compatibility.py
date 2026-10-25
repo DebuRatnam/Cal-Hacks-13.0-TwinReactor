@@ -92,21 +92,6 @@ def test_homogeneous_reference_matches_analytic_infinite_medium(stored):
         assert s.solver_info["balance_residual"] < 1e-6
 
 
-def test_pinn_reference_preserves_properties_and_group_ratio(stored):
-    path, samples = stored
-    case = CoreDataset(path, [2]).pinn_case(0)
-    ref = case["reference"]
-    mask = ref["mask"]
-    np.testing.assert_allclose(
-        ref["flux_grid"] * ref["source_normalization_scale"], samples[2].flux
-    )
-    source = samples[2].xs[4] * ref["flux_grid"][0] + samples[2].xs[5] * ref["flux_grid"][1]
-    assert np.isclose(source[mask].mean(), 1, rtol=1e-12)
-    assert case["pitch_cm"] == 2.5 and case["gamma"] == 0.4692
-    assert ref["coordinates_cm"].shape == (48, 2)
-    assert ref["k_eff"] == samples[2].k_eff
-
-
 def test_mask_and_invalid_rods(table, tmp_path):
     ids = np.ones((6, 8), int)
     ids[-2:, -2:] = -1
@@ -172,7 +157,6 @@ def test_actual_architecture_batches_and_gradients(stored):
     batch = next(iter(DataLoader(ds, batch_size=2)))
     for name, options in (
         ("fno", {"latent_channels": 8, "num_fno_layers": 1, "num_fno_modes": 3}),
-        ("cnn", {"conv_layer_size": 8, "n_blocks": 1, "n_downsampling": 1}),
     ):
         net = build_model(name, in_channels=ds.in_channels, **options)
         pred = net(batch["x"])
@@ -183,13 +167,6 @@ def test_actual_architecture_batches_and_gradients(stored):
         assert all(p.grad is None or torch.isfinite(p.grad).all() for p in net.parameters())
     residual = physics_loss(batch["flux"], batch["k"] + 1, batch["xs"], **ds.physics_kwargs(batch))
     assert float(residual) < 1e-10
-    problem, reference = ds.make_pinn_problem(0)
-    pinn = problem.make_model(layer_size=16, num_layers=2)
-    loss = problem.losses(pinn, n_interior=32, n_boundary=16)
-    loss["total"].backward()
-    assert all(torch.isfinite(value) for value in loss.values())
-    assert pinn.log_k.grad is not None and torch.isfinite(pinn.log_k.grad)
-    assert reference["flux_grid"].shape == (2, 6, 8)
 
 
 def test_mesh_row_zero_is_south_and_column_zero_is_west(table):
