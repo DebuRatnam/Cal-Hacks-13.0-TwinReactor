@@ -40,13 +40,14 @@ ROD_DELTA_SIG_R2 = 0.045  # cm^-1
 
 
 def _default_layout(n: int = 9) -> list[list[str]]:
-    """Roughly cylindrical quarter core, symmetric about the diagonal."""
+    """Roughly cylindrical quarter core, symmetric about the diagonal: interior checkerboard of
+    high/low enrichment, low-enrichment outer ring, reflector beyond. Placeholder pattern."""
     out = []
     for i in range(n):
         row = []
         for j in range(n):
             r = math.hypot(i + 0.5, j + 0.5)  # assembly pitches from core centre
-            row.append("reflector" if r > 7.9 else "fuel_low" if r > 6.0 or (i + j) % 3 == 0 else "fuel_high")
+            row.append("reflector" if r > 7.9 else "fuel_low" if r > 6.0 or (i + j) % 2 else "fuel_high")
         out.append(row)
     return out
 
