@@ -11,30 +11,39 @@ from agent.tools import Session, make_tools
 
 MODEL = "claude-opus-5-5"
 
-SYSTEM = """You are an assistant for reactor physicists studying a 2-D quarter-core PWR model. \
+SYSTEM = """You are an assistant for reactor physicists studying a 2-D quarter-core PWR model \
+through a trained ML surrogate (a Fourier neural operator trained on 2-group diffusion solves). \
 They ask how core outputs (k_eff, reactivity, power and 2-group flux distributions) respond to \
-control-rod positions and assembly loading changes. You answer by running configurations through \
-the tools and interpreting the results.
+control-rod positions, soluble boron and fuel loading changes. You answer by running \
+configurations through the tools and interpreting the results. You are embedded next to the \
+scientist's core editor: "this core" or "the current core" means the layout and boron that \
+describe_core reports, and every configuration you evaluate also appears in their console.
 
 How to work:
-- Call describe_core once per conversation before the first evaluation, so you know the banks, \
-materials, coordinate convention and the backend's limitations.
+- Call describe_core once per conversation before the first evaluation, so you know the layout, \
+material ids, rod banks, coordinate convention, accuracy and limitations.
 - Translate the request into explicit configurations. Put all configurations to be compared in one \
-evaluate_configurations call, with the scientist's baseline (usually all rods withdrawn) first so the \
-delta fields are relative to it. If the request is ambiguous (which banks, what insertion), state the \
-interpretation you chose rather than stalling, unless the choice would change the answer's meaning.
+evaluate_configurations call, with the baseline first so the delta fields are relative to it. Use \
+short, descriptive labels (they are shown in the console). If the request is ambiguous (which banks, \
+what insertion), state the interpretation you chose rather than stalling, unless the choice would \
+change the answer's meaning.
 - Use get_map when the question is spatial (where flux is depressed, radial tilt, shadowing).
+- Use verify_with_reference only when the scientist asks for confirmation against the reference \
+solver.
 
 How to report:
 - Every number comes from a tool result; never estimate or extrapolate values you did not compute. \
-If the model cannot represent something asked for (boron, temperature, burnup, pin-level peaking), \
-say so plainly.
-- Give units and normalization: k_eff to 5 decimals, reactivity and rod worth in pcm, power and \
-flux as relative values normalized to mean fuel power = 1. Refer to assemblies as (row, col).
-- Lead with a compact comparison table, then a short physical interpretation (e.g. thermal flux \
-depression around inserted rods, power shifting outward). Keep it concise.
-- Name the backend that produced the numbers and note that results are a research surrogate, not \
-safety-grade. When the backend is the stand-in reference solver, say the ML surrogate is not yet in use."""
+If the model cannot represent something asked for (temperature, burnup changes beyond the fuel \
+types, axial or pin-level peaking), say so plainly.
+- Give units and normalization: k_eff to 5 decimals, reactivity and rod worth in pcm, power as \
+relative values (mean 1 over fuel), flux in the units the tools state. Refer to assemblies as \
+(row, col).
+- Lead with a compact markdown comparison table, then a short physical interpretation (e.g. \
+thermal flux depression around inserted rods, power shifting outward). Keep it concise; the \
+scientist can open the maps in the console.
+- Keep caveats minimal. Do not discuss the surrogate's accuracy, error statistics or limitations \
+unless the scientist asks about them; the scientist covers accuracy separately. If a tool result \
+carries warnings, mention them in one short sentence."""
 
 
 class CoreAgent:
@@ -54,7 +63,13 @@ class CoreAgent:
         self.effort = effort
         self.messages: list = []
 
+    def set_base(self, layout: list[list[int]] | None, rods: dict[str, float], boron_ppm: float) -> None:
+        """Set the core configurations start from (the one on the scientist's screen)."""
+        s = self.session
+        s.base_layout, s.base_rods, s.base_boron_ppm = layout, dict(rods), float(boron_ppm)
+
     def ask(self, text: str, on_tool_call: Callable[[str, dict], None] | None = None) -> str:
+        self.session.new_labels.clear()
         self.messages.append({"role": "user", "content": text})
         runner = self.client.beta.messages.tool_runner(
             model=self.model,

@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ReactorTwin</title>
+<style>body{margin:0;padding:0}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,200..700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: dark control-room site interleaved with full-bleed photographs of a clean world. Scroll drives the story:
+   hero photo (parallax) -> mission statement lit word by word -> sticky photo stage for each use of nuclear power ->
+   PWR plant photo that opens up -> sticky core twin whose rods move with scroll -> speed, capabilities, console -> closing photo. */
+:root {
+  --bg: #04070c;
+  --surface: #09101a;
+  --surface-2: #0e1724;
+  --line: #172231;
+  --line-2: #24344a;
+  --ink: #e8eff7;
+  --ink-2: #a2b2c5;
+  --ink-3: #6b7d92;
+  --accent: #47b4ff;
+  --accent-2: #a3dcff;
+  --accent-ink: #03111f;
+  --accent-soft: #0c2740;
+  --warn: #f0b44c;
+  --warn-bg: #2a210f;
+  --nav-bg: rgb(4 7 12 / 0.78);
+  --scrim: rgb(4 7 12 / 0.62);
+  --glass: rgb(6 11 18 / 0.66);
+  --refl: #2a3546;
+  --mat-low: #3987e5;
+  --mat-high: #d95926;
+  --div-mid: #2c3440;
+  --div-lo: #5598e7;
+  --div-hi: #e66767;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r: 6px;
+  --nav-h: 62px;
+  --stage-h: calc(100vh - var(--nav-h));
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  color-scheme: dark;
+}
+@supports (height: 100svh) { :root { --stage-h: calc(100svh - var(--nav-h)); } }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 12px); }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; overflow-x: hidden; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 16; background: var(--bg); }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
+p { margin: 0; }
+a { color: inherit; }
+img { display: block; }
+button, input, textarea, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1280px; margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap.wide { max-width: 1480px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 10px; }
+.eyebrow::before { content: ""; width: 22px; height: 1px; background: currentColor; }
+.h2 { font-size: clamp(30px, 4.2vw, 56px); font-weight: 340; font-stretch: 112%; letter-spacing: -0.02em; line-height: 1.04; }
+.lede { font-size: clamp(16px, 1.35vw, 18px); color: var(--ink-2); max-width: 62ch; }
+.band { padding-block: clamp(64px, 9vw, 128px); position: relative; }
+.band.ruled { border-top: 1px solid var(--line); }
+.band-head { display: grid; gap: 18px; margin-bottom: clamp(32px, 4vw, 56px); max-width: 900px; }
+
+/* reveal on scroll (only when motion is allowed and JS is running) */
+html.anim [data-reveal] { transition: opacity 900ms var(--ease), transform 1100ms var(--ease); transition-delay: calc(var(--d, 0) * 90ms); }
+html.anim [data-reveal]:not(.in) { opacity: 0; transform: translateY(32px); }
+
+/* nav */
+.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 15; background: var(--nav-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); transition: background-color 400ms, border-color 400ms; }
+.nav.over { background: transparent; border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.nav .wrap { height: var(--nav-h); display: flex; align-items: center; gap: 28px; }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--font-display); font-stretch: 118%; font-weight: 500; font-size: 17px; letter-spacing: 0.01em; }
+.logo svg { color: var(--accent); }
+.nav-links { display: flex; gap: 22px; margin-left: auto; font-size: 13.5px; }
+.nav-links a { text-decoration: none; color: var(--ink-2); }
+.nav.over .nav-links a { color: var(--ink); }
+.nav-links a:hover { color: var(--ink); }
+@media (max-width: 860px) { .nav-links { display: none; } .nav .cta { margin-left: auto; } }
+.cta { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 13.5px; text-decoration: none; border: 0; cursor: pointer; white-space: nowrap; transition: background-color 200ms, transform 200ms var(--ease); }
+.cta:hover { background: var(--accent-2); transform: translateY(-1px); }
+.cta.ghost { background: rgb(4 7 12 / 0.35); color: var(--ink); border: 1px solid rgb(232 239 247 / 0.4); backdrop-filter: blur(6px); }
+.cta.ghost:hover { border-color: var(--ink); }
+
+/* photo plumbing */
+.photo { position: absolute; inset: 0; overflow: hidden; }
+.photo img { width: 100%; height: 100%; max-width: none; object-fit: cover; transform: translate3d(0, var(--py, 0px), 0) scale(var(--ps, 1.14)); will-change: transform; }
+.credit { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; color: rgb(232 239 247 / 0.7); }
+
+/* hero */
+.hero { position: relative; min-height: clamp(560px, 86vh, 900px); margin-top: calc(-1 * var(--nav-h)); display: flex; align-items: flex-end; overflow: hidden; }
+.hero .photo::after { content: ""; position: absolute; inset: 0; background:
+  linear-gradient(180deg, rgb(4 7 12 / 0.7) 0%, rgb(4 7 12 / 0.12) 28%, rgb(4 7 12 / 0.2) 52%, rgb(4 7 12 / 0.82) 80%, var(--bg) 100%); }
+@media (prefers-reduced-motion: no-preference) { html.anim .hero .photo img { animation: settle 2600ms var(--ease) both; } }
+@keyframes settle { from { scale: 1.08; filter: saturate(0.7) brightness(0.8); } to { scale: 1; filter: none; } }
+.hero-inner { position: relative; z-index: 1; width: 100%; padding-block: calc(var(--nav-h) + 80px) clamp(40px, 6vw, 72px); }
+.hero-copy { display: grid; gap: 24px; max-width: 980px; }
+.hero h1 { font-size: clamp(44px, 7.4vw, 112px); font-weight: 260; font-stretch: 120%; letter-spacing: -0.04em; line-height: 0.96; text-shadow: 0 2px 40px rgb(4 7 12 / 0.4); }
+.hero h1 .ln { display: block; overflow: hidden; padding-bottom: 0.06em; }
+.hero h1 .ln > span { display: inline-block; }
+@media (prefers-reduced-motion: no-preference) { html.anim .hero h1 .ln > span { animation: rise 1300ms var(--ease) both; animation-delay: calc(200ms + var(--i) * 140ms); } html.anim .hero .later { animation: fade 1200ms var(--ease) both; animation-delay: 750ms; } }
+@keyframes rise { from { transform: translateY(105%); } to { transform: none; } }
+@keyframes fade { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.hero h1 em { font-style: normal; color: var(--accent-2); font-weight: 340; }
+.hero .lede { color: var(--ink); opacity: 0.88; font-size: clamp(16px, 1.45vw, 19px); }
+.hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+.hero-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 24px; margin-top: clamp(40px, 6vw, 72px); padding-top: 16px; border-top: 1px solid rgb(232 239 247 / 0.18); font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em; color: var(--ink-2); }
+.hero-foot b { color: var(--ink); font-weight: 500; }
+
+/* mission statement */
+.statement { font-family: var(--font-display); font-size: clamp(26px, 3.6vw, 50px); font-weight: 320; font-stretch: 110%; letter-spacing: -0.02em; line-height: 1.16; max-width: 24em; }
+.statement .w { opacity: var(--o, 1); transition: opacity 120ms linear; }
+.statement .hi { color: var(--accent-2); }
+.mission-foot { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: clamp(28px, 5vw, 80px); margin-top: clamp(40px, 5vw, 72px); align-items: start; }
+@media (max-width: 860px) { .mission-foot { grid-template-columns: minmax(0, 1fr); } }
+.figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line-2); }
+@media (max-width: 560px) { .figures { grid-template-columns: minmax(0, 1fr); } }
+.figure { padding: 20px 18px 0 0; display: grid; gap: 8px; align-content: start; }
+.figure + .figure { padding-left: 18px; border-left: 1px solid var(--line); }
+@media (max-width: 560px) { .figure + .figure { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); } }
+.figure .n { font-family: var(--font-display); font-stretch: 115%; font-weight: 300; font-size: clamp(36px, 4vw, 54px); letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.figure .n small { font-size: 0.42em; color: var(--ink-2); letter-spacing: 0; margin-left: 4px; }
+.figure p { color: var(--ink-2); font-size: 14px; max-width: 30ch; }
+.figure cite { font-style: normal; font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
+
+/* applications: sticky photo stage with chapters scrolling over it */
+.uses { position: relative; }
+.stage { position: sticky; top: calc(var(--nav-h) + env(safe-area-inset-top, 0px)); height: var(--stage-h); margin-bottom: calc(-1 * var(--stage-h)); overflow: hidden; }
+.shot { position: absolute; inset: 0; opacity: 0; transition: opacity 1100ms var(--ease); }
+.shot img { width: 100%; height: 100%; max-width: none; object-fit: cover; transform: scale(1.12); transition: transform 3200ms var(--ease); }
+.shot.on { opacity: 1; }
+.shot.on img { transform: scale(1.02); }
+.stage::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(4 7 12 / 0.78) 0%, rgb(4 7 12 / 0.35) 45%, rgb(4 7 12 / 0.05) 70%), linear-gradient(180deg, var(--bg) 0%, transparent 14%, transparent 86%, var(--bg) 100%); }
+.stage-ui { position: absolute; z-index: 2; inset: auto max(16px, env(safe-area-inset-right, 0px)) 22px max(16px, env(safe-area-inset-left, 0px)); display: flex; justify-content: space-between; align-items: end; gap: 16px; pointer-events: none; }
+.toc { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+.toc li { color: rgb(232 239 247 / 0.45); display: flex; align-items: center; gap: 10px; transition: color 400ms; }
+.toc li::before { content: ""; width: 14px; height: 1px; background: currentColor; transition: width 500ms var(--ease); }
+.toc li.on { color: var(--ink); } .toc li.on::before { width: 34px; background: var(--accent); }
+@media (max-width: 700px) { .toc { display: none; } }
+.chapters { position: relative; z-index: 1; }
+.chapter { min-height: var(--stage-h); display: flex; align-items: center; padding-block: 12vh; }
+.chapter .card { max-width: 520px; display: grid; gap: 14px; padding: clamp(20px, 3vw, 32px); border-radius: 12px; background: var(--glass); backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); border: 1px solid rgb(232 239 247 / 0.12); }
+.chapter.intro .card { background: transparent; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; padding-inline: 0; max-width: 760px; }
+.chapter h3 { font-size: clamp(28px, 3.4vw, 46px); font-weight: 320; font-stretch: 115%; letter-spacing: -0.025em; line-height: 1.02; }
+.chapter p { color: var(--ink-2); font-size: 15.5px; }
+.chapter .k { font-family: var(--font-mono); font-size: 12px; color: var(--accent-2); }
+.scope { justify-self: start; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent-2); }
+.scope.horizon { border-color: var(--ink-3); border-style: dashed; color: var(--ink-2); }
+
+/* PWR band */
+.pwr { position: relative; padding-block: clamp(24px, 4vw, 48px); }
+.pwr-frame { position: relative; height: clamp(520px, 82vh, 860px); overflow: hidden; clip-path: inset(var(--cy, 0%) var(--cx, 0%) round var(--cr, 0px)); }
+.pwr-frame .photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(4 7 12 / 0.1) 30%, rgb(4 7 12 / 0.86) 100%); }
+.pwr-copy { position: absolute; z-index: 1; inset: auto 0 0 0; padding-block: clamp(28px, 5vw, 56px); }
+.pwr-copy .wrap { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px 48px; align-items: end; }
+@media (max-width: 860px) { .pwr-copy .wrap { grid-template-columns: minmax(0, 1fr); } }
+.pwr-copy p { color: var(--ink); opacity: 0.86; max-width: 52ch; }
+.pwr-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: rgb(232 239 247 / 0.18); border-radius: 8px; overflow: hidden; }
+.pwr-facts div { background: var(--glass); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 12px 14px; display: grid; gap: 2px; min-width: 0; }
+.pwr-facts span { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.pwr-facts b { font-family: var(--font-display); font-weight: 350; font-stretch: 110%; font-size: clamp(18px, 2vw, 24px); }
+
+/* the twin: sticky core, scrolling steps */
+.twin-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 80px); align-items: start; }
+@media (max-width: 940px) { .twin-grid { grid-template-columns: minmax(0, 1fr); } }
+.twin-steps { display: grid; }
+.tstep { min-height: 62vh; display: flex; align-items: center; }
+.tstep:first-child { min-height: 48vh; align-items: flex-start; }
+.tstep .card { display: grid; gap: 12px; max-width: 46ch; opacity: 0.35; transition: opacity 500ms var(--ease); }
+.tstep.on .card { opacity: 1; }
+@media (max-width: 940px) { .tstep { min-height: 46vh; } .tstep .card { opacity: 1; background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--line-2); border-radius: 10px; padding: 18px; } .tstep:first-child .card { background: none; border: 0; padding: 0; backdrop-filter: none; } }
+.tstep h3 { font-size: clamp(22px, 2.4vw, 32px); font-weight: 350; font-stretch: 112%; letter-spacing: -0.015em; }
+.tstep p { color: var(--ink-2); }
+.tstep .num { font-family: var(--font-mono); font-size: 12px; color: var(--accent-2); }
+.twin-sticky { position: sticky; top: calc(var(--nav-h) + 24px + env(safe-area-inset-top, 0px)); }
+@media (max-width: 940px) { .twin-sticky { top: calc(var(--nav-h) + 8px + env(safe-area-inset-top, 0px)); max-width: 420px; width: 100%; justify-self: center; z-index: 0; order: -1; } .twin-steps { position: relative; z-index: 1; } }
+.viz { position: relative; border: 1px solid var(--line-2); border-radius: 12px; background: radial-gradient(circle at 50% 45%, rgb(71 180 255 / 0.1), transparent 60%), var(--surface); padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.viz-top, .viz-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.viz canvas { width: 100%; max-width: 100%; aspect-ratio: 1; display: block; }
+.readout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.readout div { background: var(--bg); padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.readout span { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.readout b { font-family: var(--font-mono); font-weight: 500; font-size: clamp(14px, 1.5vw, 18px); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.hero-cfgs { display: flex; flex-wrap: wrap; gap: 6px; }
+.hero-cfgs button { font-family: var(--font-mono); font-size: 11.5px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2); cursor: pointer; }
+.hero-cfgs button[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); background: var(--accent-soft); }
+
+/* speed */
+.speed { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: clamp(16px, 2.4vw, 28px); display: grid; gap: 6px; }
+.srow { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 20px; align-items: center; padding-block: 14px; border-bottom: 1px solid var(--line); }
+@media (max-width: 680px) { .srow { grid-template-columns: minmax(0, 1fr); gap: 10px; } }
+.srow .name { font-weight: 500; }
+.srow .name small { display: block; color: var(--ink-3); font-size: 12.5px; font-weight: 400; }
+.track { position: relative; height: 30px; }
+.track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--line-2); }
+.track .gl { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.track .rng { position: absolute; top: 50%; height: 8px; transform: translateY(-50%); border-radius: 4px; background: var(--line-2); border: 1px solid var(--ink-3); transform-origin: left; }
+.track .pt { position: absolute; top: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px var(--surface); }
+.track .pt.target { background: var(--surface); border: 2px dashed var(--accent); box-shadow: 0 0 0 2px var(--surface), 0 0 18px rgb(71 180 255 / 0.5); }
+.track .hit { position: absolute; top: 0; bottom: 0; transform: translateX(-50%); min-width: 28px; cursor: default; }
+.track .tag { position: absolute; top: -4px; transform: translate(-50%, -100%); font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+html.anim .speed .rng { transition: clip-path 1400ms var(--ease); clip-path: inset(0 0 0 0); }
+html.anim .speed:not(.in) .rng { clip-path: inset(0 100% 0 0); }
+html.anim .speed .pt { transition: left 1400ms var(--ease), opacity 600ms; }
+html.anim .speed:not(.in) .pt { left: 0 !important; opacity: 0; }
+.axis { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 20px; padding-top: 6px; }
+@media (max-width: 680px) { .axis { grid-template-columns: minmax(0, 1fr); } .axis > span:first-child { display: none; } }
+.ticks { position: relative; height: 18px; font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
+.ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+@media (max-width: 520px) { .ticks span.minor { display: none; } }
+.batch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+@media (max-width: 680px) { .batch { grid-template-columns: minmax(0, 1fr); } }
+.batch div { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 4px; }
+.batch div.us { border-color: var(--accent); background: var(--accent-soft); }
+.batch span { font-size: 12.5px; color: var(--ink-3); }
+.batch b { font-family: var(--font-display); font-stretch: 112%; font-weight: 350; font-size: 28px; letter-spacing: -0.02em; }
+.fine { font-size: 12.5px; color: var(--ink-3); max-width: 90ch; }
+
+/* capabilities */
+.caps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+@media (max-width: 760px) { .caps { grid-template-columns: minmax(0, 1fr); } }
+.cap { background: var(--bg); padding: clamp(22px, 3vw, 36px); display: grid; gap: 14px; align-content: start; min-width: 0; transition: background-color 300ms; }
+.cap:hover { background: var(--surface); }
+.cap h3 { font-size: clamp(21px, 2vw, 27px); font-weight: 400; font-stretch: 110%; letter-spacing: -0.01em; }
+.cap p { color: var(--ink-2); max-width: 52ch; }
+.prompt { font-family: var(--font-mono); font-size: 12.5px; color: var(--accent-2); border-left: 2px solid var(--accent); padding: 4px 0 4px 12px; max-width: 60ch; }
+.prompt::before { content: "ask › "; color: var(--ink-3); }
+.steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); counter-reset: s; margin-top: clamp(40px, 5vw, 64px); }
+@media (max-width: 980px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+.step { position: relative; padding: 18px 18px 0 0; border-top: 1px solid var(--line-2); display: grid; gap: 8px; align-content: start; counter-increment: s; }
+@media (max-width: 980px) { .step { padding: 16px 0 18px 44px; border-top: 0; border-left: 1px solid var(--line-2); } }
+.step::before { content: counter(s, decimal-leading-zero); font-family: var(--font-mono); font-size: 11px; color: var(--accent); letter-spacing: 0.1em; }
+.step::after { content: ""; position: absolute; top: -4px; left: 0; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+@media (max-width: 980px) { .step::before { position: absolute; left: 14px; top: 18px; } .step::after { top: 20px; left: -4px; } }
+.step h3 { font-size: 17px; font-weight: 500; font-stretch: 108%; }
+.step p { font-size: 13.5px; color: var(--ink-2); max-width: 36ch; }
+
+/* status */
+.status-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: clamp(32px, 5vw, 80px); align-items: start; }
+@media (max-width: 900px) { .status-grid { grid-template-columns: minmax(0, 1fr); } }
+.status-list { display: grid; border-top: 1px solid var(--line-2); }
+.status-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.status-item p { grid-column: 1 / -1; color: var(--ink-2); font-size: 14px; }
+.status-item h3 { font-size: 18px; font-weight: 450; font-stretch: 108%; }
+.state { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; }
+.state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; }
+.state.run { color: var(--accent-2); } .state.run::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.state.prog { color: var(--warn); } .state.prog::before { background: linear-gradient(90deg, var(--warn) 50%, transparent 50%); border-color: var(--warn); }
+.state.next { color: var(--ink-3); }
+.caution { border: 1px solid var(--warn); background: var(--warn-bg); border-radius: 10px; padding: 20px 22px; display: grid; gap: 8px; color: var(--ink-2); font-size: 14.5px; max-width: 60ch; }
+.caution b { color: var(--warn); font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500; }
+
+/* closing */
+.closing { position: relative; min-height: clamp(480px, 74vh, 760px); display: flex; align-items: center; overflow: hidden; }
+.closing .photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, var(--bg) 0%, rgb(4 7 12 / 0.25) 22%, rgb(4 7 12 / 0.35) 70%, var(--bg) 100%), radial-gradient(ellipse at 30% 55%, rgb(4 7 12 / 0.55), transparent 60%); }
+.closing .wrap { position: relative; z-index: 1; width: 100%; display: grid; gap: 24px; }
+.closing h2 { font-size: clamp(40px, 6.4vw, 96px); font-weight: 260; font-stretch: 120%; letter-spacing: -0.04em; line-height: 0.98; max-width: 12em; text-shadow: 0 2px 30px rgb(4 7 12 / 0.45); }
+
+footer { border-top: 1px solid var(--line); padding-block: 36px 48px; }
+footer .wrap { display: grid; gap: 22px; }
+.foot-top { display: flex; flex-wrap: wrap; gap: 12px 32px; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ink-3); }
+.credits { font-size: 11.5px; color: var(--ink-3); line-height: 1.7; }
+.credits a { color: var(--ink-2); }
+
+/* ===== console ===== */
+.console-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 28px; }
+.console-head .band-head { margin-bottom: 0; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; font-family: var(--font-mono); font-size: 11.5px; border: 1px solid var(--line-2); color: var(--ink-2); }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.label { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); font-weight: 500; }
+.app { display: grid; grid-template-columns: 280px minmax(0, 1fr) 370px; gap: 14px; align-items: start; font-size: 14px; line-height: 1.45; }
+@media (max-width: 1240px) { .app { grid-template-columns: 270px minmax(0, 1fr); } .chat { grid-column: 1 / -1; } }
+@media (max-width: 780px) { .app { grid-template-columns: minmax(0, 1fr); } }
+.pane { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+.pane > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.pane > header h2 { font-size: 15px; font-weight: 500; font-stretch: 108%; letter-spacing: 0.01em; }
+.section { padding: 14px; display: grid; gap: 10px; border-bottom: 1px solid var(--line); }
+.section:last-child { border-bottom: 0; }
+.section-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.configs { display: grid; gap: 4px; }
+.cfg { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 7px 10px; border-radius: 5px; border: 1px solid transparent; background: none; cursor: pointer; }
+.cfg:hover { background: var(--surface-2); }
+.cfg[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.cfg .k { color: var(--ink-3); font-size: 12px; }
+.btn { padding: 7px 12px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--surface-2); cursor: pointer; font-weight: 500; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { background: var(--accent-2); }
+.btn.small { padding: 4px 9px; font-size: 12px; }
+.row-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.bank { display: grid; grid-template-columns: 26px minmax(0, 1fr) 46px; align-items: center; gap: 10px; }
+.bank-id { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-weight: 500; font-size: 12px; border: 1.5px solid var(--ink-3); }
+.bank-id.in { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.bank small { display: block; color: var(--ink-3); font-size: 11px; font-family: var(--font-mono); }
+.bank input[type=range] { width: 100%; accent-color: var(--accent); }
+.bank output { text-align: right; font-size: 12px; }
+.pending { display: grid; gap: 8px; opacity: 0.7; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr) 90px; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.field input, .field select { width: 100%; padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-2); }
+.tag { font-family: var(--font-mono); font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); white-space: nowrap; }
+.palette { display: flex; flex-wrap: wrap; gap: 6px; }
+.swatch { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 5px; border: 1px solid var(--line-2); background: var(--surface-2); cursor: pointer; font-size: 12px; }
+.swatch i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.swatch[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.hint { font-size: 12px; color: var(--ink-3); margin: 0; }
+.map-pane header { flex-wrap: wrap; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line-2); border-radius: 6px; overflow: hidden; }
+.seg button { padding: 5px 10px; border: 0; border-right: 1px solid var(--line-2); background: transparent; cursor: pointer; font-size: 12.5px; color: var(--ink-2); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.map-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 70px; gap: 14px; padding: 16px; align-items: start; }
+@media (max-width: 520px) { .map-wrap { grid-template-columns: minmax(0, 1fr); } }
+.core-frame { position: relative; display: grid; grid-template-columns: 20px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 20px; gap: 4px; max-width: 560px; width: 100%; }
+.yaxis { display: grid; grid-template-rows: repeat(9, 1fr); font-size: 10.5px; color: var(--ink-3); text-align: right; align-items: center; font-family: var(--font-mono); }
+.xaxis { grid-column: 2; display: grid; grid-template-columns: repeat(9, 1fr); font-size: 10.5px; color: var(--ink-3); text-align: center; font-family: var(--font-mono); }
+.coregrid { position: relative; display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; aspect-ratio: 1; max-width: 100%; padding: 2px; background: var(--bg);
+  border-top: 2px solid var(--ink-2); border-right: 2px solid var(--ink-2); border-left: 2px dashed var(--ink-3); border-bottom: 2px dashed var(--ink-3); }
+.coregrid.full { border: 2px solid var(--ink-2); gap: 1px; padding: 1px; }
+.coregrid.full::before, .coregrid.full::after { content: ""; position: absolute; pointer-events: none; z-index: 3; border: 0 dashed var(--accent-2); }
+.coregrid.full::before { left: 50%; top: 0; bottom: 0; border-left-width: 2px; transform: translateX(-1px); }
+.coregrid.full::after { top: 50%; left: 0; right: 0; border-top-width: 2px; transform: translateY(-1px); }
+.coregrid.full .cell { font-size: clamp(6px, 0.8vw, 9px); border-radius: 2px; }.coregrid.full .cell .rod { width: 10px; height: 10px; font-size: 6.5px; line-height: 8px; top: 1px; right: 1px; border-width: 1px; }
+.map-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.cell { position: relative; border: 0; border-radius: 3px; display: grid; place-items: center; font-family: var(--font-mono); font-size: clamp(8px, 1.3vw, 11px); cursor: pointer; padding: 0; min-width: 0; }
+.cell:hover { outline: 2px solid var(--ink); outline-offset: -1px; z-index: 2; }
+.cell .rod { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; font-size: 8.5px; line-height: 12px; text-align: center; border: 1.5px solid currentColor; background: var(--surface); color: var(--ink); }
+.cell .rod.in { background: var(--accent); color: var(--accent-ink); border-color: var(--surface); }
+.bc-notes { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; font-size: 11.5px; color: var(--ink-3); margin-top: 6px; max-width: 560px; }
+.map-pane[data-dim="3d"] .core-frame, .map-pane[data-dim="3d"] .bc-notes { display: none; }
+.map-pane[data-dim="2d"] .v3d { display: none; }
+.map-pane[data-dim="3d"] .v3d { margin-top: 0; }
+.v3d { margin-top: 18px; max-width: 560px; display: grid; gap: 8px; }
+.v3d-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.v3d-head .label { display: flex; align-items: center; gap: 8px; }
+.v3d-head .label::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.v3d-stage { position: relative; aspect-ratio: 1 / 1; max-width: 100%; border-radius: 8px; border: 1px solid var(--line-2); overflow: hidden; cursor: grab; touch-action: pan-y;
+  background: radial-gradient(120% 80% at 50% 30%, #0f2238 0%, var(--surface-2) 45%, var(--bg) 100%); }
+.v3d-stage.drag { cursor: grabbing; }
+.v3d-stage canvas { display: block; width: 100%; height: 100%; }
+.v3d-hint { position: absolute; left: 10px; bottom: 8px; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-3); pointer-events: none; }
+.v3d-axis { position: absolute; right: 10px; top: 8px; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-3); pointer-events: none; text-align: right; }
+.v3d-fail { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: var(--ink-3); font-size: 13px; }
+.v3d-note { font-size: 11.5px; color: var(--ink-3); margin: 0; }
+.btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent-2); }
+.legend { display: grid; gap: 6px; justify-items: start; font-size: 11px; color: var(--ink-2); }
+.ramp { width: 14px; height: 220px; border-radius: 3px; border: 1px solid var(--line); }
+.legend-scale { display: grid; grid-template-columns: 14px auto; gap: 6px; align-items: stretch; }
+.legend-ticks { display: flex; flex-direction: column; justify-content: space-between; }
+.legend .cat { display: flex; align-items: center; gap: 6px; }
+.legend .cat i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.tooltip { position: fixed; pointer-events: none; z-index: 20; background: var(--ink); color: var(--bg); padding: 7px 9px; border-radius: 5px; font-size: 12px; line-height: 1.35; max-width: 260px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.4); }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--surface); padding: 12px 14px; display: grid; gap: 2px; min-width: 0; }
+.stat .v { font-family: var(--font-mono); font-size: 21px; font-weight: 500; }
+.stat .s { font-size: 12px; color: var(--ink-3); }
+.stale-banner { margin: 12px 16px 0; padding: 8px 12px; border-radius: 6px; background: var(--warn-bg); color: var(--warn); font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.table-wrap { overflow-x: auto; padding: 4px 0 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 8px 14px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); font-weight: 500; }
+td { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+td:first-child { font-family: var(--font-body); }
+tr.sel td { background: var(--accent-soft); }
+.source { padding: 10px 14px 14px; font-size: 12px; color: var(--ink-3); margin: 0; }
+.chat { display: flex; flex-direction: column; max-height: calc(100vh - var(--nav-h) - 32px); position: sticky; top: calc(var(--nav-h) + 14px + env(safe-area-inset-top, 0px)); border-color: var(--line-2); box-shadow: 0 0 0 1px rgb(71 180 255 / 0.06), 0 20px 60px rgb(0 0 0 / 0.35); }
+@media (max-width: 1240px) { .chat { position: static; max-height: none; } }
+.chat > header .who { display: flex; align-items: center; gap: 10px; }
+.chat > header .live { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--ink-3); }
+.msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-height: 280px; }
+.msg { max-width: 94%; padding: 10px 12px; border-radius: 10px; font-size: 13.5px; }
+.msg.user { align-self: flex-end; background: var(--accent-soft); border: 1px solid rgb(71 180 255 / 0.35); border-bottom-right-radius: 3px; }
+.msg.bot { align-self: flex-start; background: var(--surface-2); border-bottom-left-radius: 3px; }
+.msg.bot p { margin: 0 0 6px; } .msg.bot p:last-child { margin: 0; }
+.msg.sys { align-self: center; font-size: 12px; color: var(--warn); background: var(--warn-bg); }
+.msg table { font-size: 12px; margin: 6px 0; }
+.msg th, .msg td { padding: 4px 6px; }
+.tools { display: flex; flex-wrap: wrap; gap: 4px; align-self: flex-start; }
+.tool { font-family: var(--font-mono); font-size: 11px; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--line-2); color: var(--accent-2); }
+.suggest { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; }
+.chip { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; cursor: pointer; color: var(--ink-2); }
+.chip:hover { border-color: var(--accent); color: var(--ink); }
+.composer { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--line); }
+.composer textarea { flex: 1; min-width: 0; resize: none; height: 42px; padding: 9px 10px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--bg); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 9px 14px; border-radius: 6px; font-size: 13px; z-index: 30; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) { .cell { transition: background-color 180ms ease; } }
+@media (prefers-reduced-motion: reduce) { .shot, .shot img, .statement .w { transition: none; } }
+</style>
+</head>
+<body>
+
+<header class="nav over" id="nav">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="ReactorTwin home">
+      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.6" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.55"/><g fill="currentColor"><rect x="5.6" y="5.6" width="3.6" height="3.6" opacity="0.35"/><rect x="10.2" y="5.6" width="3.6" height="3.6" opacity="0.6"/><rect x="14.8" y="5.6" width="3.6" height="3.6" opacity="0.35"/><rect x="5.6" y="10.2" width="3.6" height="3.6" opacity="0.6"/><rect x="10.2" y="10.2" width="3.6" height="3.6"/><rect x="14.8" y="10.2" width="3.6" height="3.6" opacity="0.6"/><rect x="5.6" y="14.8" width="3.6" height="3.6" opacity="0.35"/><rect x="10.2" y="14.8" width="3.6" height="3.6" opacity="0.6"/><rect x="14.8" y="14.8" width="3.6" height="3.6" opacity="0.35"/></g></svg>
+      ReactorTwin
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#mission">Mission</a><a href="#twin">The twin</a><a href="#capabilities">Capabilities</a><a href="#console">Console</a>
+    </nav>
+    <a class="cta" href="#console">Open console</a>
+  </div>
+</header>
+
+<main id="top">
+<section class="hero" aria-labelledby="heroTitle">
+  <div class="photo"><img src="img/hero-lake.jpg" alt="Clouds and mountains mirrored in a still alpine lake" data-parallax="0.28" fetchpriority="high"></div>
+  <div class="hero-inner">
+    <div class="wrap">
+      <div class="hero-copy">
+        <div class="eyebrow later" style="color:var(--accent-2)">AI agent · PWR core physics</div>
+        <h1 id="heroTitle"><span class="ln"><span style="--i:0">Designing the reactors</span></span><span class="ln"><span style="--i:1">a <em>clean world</em> runs on.</span></span></h1>
+        <p class="lede later">ReactorTwin is an agent that drives a machine-learning simulation of a pressurized water reactor core. It helps engineers design and screen cores in milliseconds, so reactors that bring heat, medicine, clean water and clean fuel reach more communities, sooner.</p>
+        <div class="hero-ctas later"><a class="cta" href="#console">Open the console</a><a class="cta ghost" href="#mission">Why we're building it</a></div>
+      </div>
+      <div class="hero-foot later"><span><b>2-group</b> diffusion physics</span><span><b>Quarter-core</b> symmetry</span><span><b>Reference solver</b> on demand</span><span>Scroll ↓</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="mission" aria-labelledby="missionTitle">
+  <div class="wrap">
+    <div class="eyebrow" data-reveal style="margin-bottom:28px">Mission</div>
+    <h2 class="statement" id="missionTitle" data-words><span class="hi">Warm homes</span> through the winter. <span class="hi">Isotopes</span> that find and treat cancer. <span class="hi">Hydrogen and fertilizer</span> made without fossil fuels. <span class="hi">Fresh water</span> from the sea. Nuclear fission can deliver all of it, around the clock and without carbon. What holds it back is the time it takes to design, license and operate every reactor core.</h2>
+    <div class="mission-foot">
+      <p class="lede" data-reveal>Each design change to a core is checked with physics solves that take seconds to hours, and a loading-pattern study can need thousands of them. ReactorTwin puts a fast learned surrogate in front of those solves, with an agent that knows how to use it. Engineers explore in a conversation, spend expensive compute only on the options that deserve it, and get reactors to the communities that need them sooner.</p>
+      <div class="figures">
+        <div class="figure" data-reveal style="--d:0"><div class="n">~<span data-count="50">50</span><small>%</small></div><p>Share of the world's final energy use that is heat, for homes, buildings and industry. Most of it still comes from burning fossil fuels.</p><cite>IEA</cite></div>
+        <div class="figure" data-reveal style="--d:1"><div class="n">~<span data-count="40">40</span><small>M</small></div><p>Medical scans a year that use technetium-99m, an isotope that comes from reactors.</p><cite>World Nuclear Association</cite></div>
+        <div class="figure" data-reveal style="--d:2"><div class="n">&lt;1<small>%</small></div><p>Share of the 97 million tonnes of hydrogen used in 2023 that was made with low emissions.</p><cite>IEA, Global Hydrogen Review 2024</cite></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="uses" id="applications" aria-label="How nuclear energy serves communities">
+  <div class="stage" aria-hidden="true">
+    <div class="shot on"><img src="img/heat-village.jpg" alt="" loading="lazy"></div>
+    <div class="shot"><img src="img/isotopes-hfir.jpg" alt="" loading="lazy"></div>
+    <div class="shot"><img src="img/hydrogen-ship.jpg" alt="" loading="lazy"></div>
+    <div class="shot"><img src="img/desal-water.jpg" alt="" loading="lazy"></div>
+    <div class="shot"><img src="img/datacenter-city.jpg" alt="" loading="lazy" style="object-position:30% 60%"></div>
+    <div class="shot"><img src="img/remote-alaska.jpg" alt="" loading="lazy"></div>
+    <div class="shot"><img src="img/space-earth.jpg" alt="" loading="lazy" style="object-position:50% 40%"></div>
+    <div class="stage-ui">
+      <ol class="toc" id="toc"><li class="on">Community heat</li><li>Medical isotopes</li><li>Pink hydrogen</li><li>Clean water</li><li>Reliable grid</li><li>Remote communities</li><li>Deep space</li></ol>
+      <span class="credit" id="shotCredit"></span>
+    </div>
+  </div>
+  <div class="chapters wrap">
+    <article class="chapter intro" data-shot="0"><div class="card"><div class="eyebrow" style="color:var(--accent-2)">Why nuclear</div><h3 style="font-size:clamp(32px,4.4vw,60px)">Energy that does more than keep the lights on.</h3><p style="font-size:17px;max-width:52ch">A reactor makes steady heat, neutrons and electricity at the same time. Each one can replace fossil fuel somewhere a community depends on it.</p></div></article>
+    <article class="chapter" data-shot="0"><div class="card"><span class="scope">PWR · proven</span><h3>Heat for communities</h3><p>Keeping homes, schools and hospitals warm through the winter is one of the biggest uses of energy, and most of it still comes from burning gas, oil and coal. Steam from a PWR can feed a district heating network instead.</p><span class="k">Beznau, Switzerland has heated nearby towns since the 1980s. Haiyang, China now heats its city from its reactors.</span></div></article>
+    <article class="chapter" data-shot="1"><div class="card"><span class="scope">Research reactors · today</span><h3>Medical isotopes</h3><p>Technetium-99m, used in tens of millions of scans a year, starts as molybdenum-99 made in a small number of aging reactors. When one goes offline, hospitals around the world run short. Reactors also make lutetium-177 for cancer therapy and cobalt-60 for sterilizing medical supplies.</p><span class="k">Faster core design helps keep isotope reactors running and new ones getting built.</span></div></article>
+    <article class="chapter" data-shot="2"><div class="card"><span class="scope">Nuclear · piloting now</span><h3>Pink hydrogen</h3><p>Hydrogen made by splitting water with nuclear electricity is called pink hydrogen. Almost all hydrogen today comes from natural gas and coal. Pink hydrogen can make the fertilizer that feeds billions of people, and fuel ships, trucks and steel mills, without the fossil emissions.</p><span class="k">US nuclear plants began producing hydrogen on site in 2023.</span></div></article>
+    <article class="chapter" data-shot="3"><div class="card"><span class="scope">PWR · today</span><h3>Clean water</h3><p>Desalination is energy-hungry and needed most where fresh water is scarce. A reactor can supply both the power and the heat to turn seawater into drinking water around the clock.</p></div></article>
+    <article class="chapter" data-shot="4"><div class="card"><span class="scope">PWR · today</span><h3>A reliable grid</h3><p>Hospitals, transit, factories and the data centers behind everyday services all need power every hour of the year. Nuclear supplies it without carbon, and without the storage that intermittent sources need.</p></div></article>
+    <article class="chapter" data-shot="5"><div class="card"><span class="scope horizon">SMR · horizon</span><h3>Remote communities</h3><p>Small modular reactors can replace diesel in off-grid towns, Arctic villages and islands, bringing both heat and power. This is outside ReactorTwin's current PWR scope, and a natural next step since many SMR designs are small PWRs.</p></div></article>
+    <article class="chapter" data-shot="6"><div class="card"><span class="scope horizon">Space · horizon</span><h3>Deep space exploration</h3><p>Beyond Mars, sunlight is too weak for solar panels to carry a mission. Fission power and propulsion make long journeys and surface bases possible.</p></div></article>
+  </div>
+</section>
+
+<section class="pwr" aria-labelledby="pwrTitle">
+  <div class="pwr-frame" id="pwrFrame">
+    <div class="photo"><img src="img/pwr.jpg" alt="Grafenrheinfeld nuclear power plant: two cooling towers and the domed PWR containment building under a cloudy sky" loading="lazy" data-parallax="0.18"></div>
+    <div class="pwr-copy">
+      <div class="wrap">
+        <div style="display:grid;gap:16px">
+          <div class="eyebrow" style="color:var(--accent-2)">Starting with the PWR</div>
+          <h2 class="h2" id="pwrTitle">The workhorse of the world's nuclear fleet.</h2>
+          <p>About two-thirds of the world's operating power reactors are pressurized water reactors. ReactorTwin models a 2-D PWR core: fuel assemblies at different enrichments, control rod banks, and the reflector around them.</p>
+        </div>
+        <div style="display:grid;gap:10px">
+          <div class="pwr-facts"><div><span>Coolant</span><b>Light water</b></div><div><span>Pressure</span><b>~15.5 MPa</b></div><div><span>Fuel</span><b>UO₂, ≤5%</b></div></div>
+          <span class="credit">Grafenrheinfeld, Germany. A 1,345 MWe PWR that operated from 1982 to 2015. Photo: Rainer Lippert, public domain.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="twin" aria-labelledby="twinTitle">
+  <div class="wrap">
+    <div class="twin-grid">
+      <div class="twin-steps">
+        <div class="tstep on" data-cfg="0"><div class="card">
+          <div class="eyebrow">The twin</div>
+          <h2 class="h2" id="twinTitle">Move a rod. Watch the core answer.</h2>
+          <p class="lede">A full core is 18 × 18 fuel assemblies, mirrored from a quarter-core model. Scroll to insert control rod banks and see the power shift.</p>
+        </div></div>
+        <div class="tstep" data-cfg="0"><div class="card"><span class="num">All rods out</span><h3>The baseline core</h3><p>k<sub>eff</sub> 1.07996. Power peaks at 1.553 times the core average, just off the center, where high-enrichment fuel sits closest together.</p></div></div>
+        <div class="tstep" data-cfg="1"><div class="card"><span class="num">Bank A in · −413 pcm</span><h3>Insert the central bank</h3><p>Thermal flux in the central assembly drops by 80%. Power moves outward and flattens: the peak falls to 1.318.</p></div></div>
+        <div class="tstep" data-cfg="2"><div class="card"><span class="num">Banks A + B in · −1,496 pcm</span><h3>Add a second bank</h3><p>Bank B carves dips on both axes, and power crowds toward the diagonal. The peak climbs back to 1.482. Rod worth and power shape trade off, and the agent can map that trade in seconds.</p></div></div>
+      </div>
+      <figure class="twin-sticky" style="margin:0">
+        <div class="viz" aria-label="Full-core assembly power map for the selected control rod configuration">
+          <div class="viz-top"><span>Full core · 18 × 18 assemblies</span><span>Pitch 21.5 cm</span></div>
+          <canvas id="heroCore" aria-hidden="true"></canvas>
+          <div class="readout" aria-live="polite">
+            <div><span>Configuration</span><b id="hcLabel" style="font-family:var(--font-body);font-size:14px">All rods out</b></div>
+            <div><span>k_eff</span><b id="hcK">1.07996</b></div>
+            <div><span>Δρ · Peak</span><b id="hcD">ref · 1.553</b></div>
+          </div>
+          <div class="viz-bottom"><div class="hero-cfgs" id="heroCfgs" role="group" aria-label="Rod configuration"></div><span>Relative assembly power · sample data</span></div>
+        </div>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="band ruled" id="speed" aria-labelledby="speedTitle">
+  <div class="wrap">
+    <div class="band-head" data-reveal>
+      <div class="eyebrow">Time to answer</div>
+      <h2 class="h2" id="speedTitle">Same question, five orders of magnitude apart.</h2>
+      <p class="lede">Time for one 2-D core evaluation, on a log scale. The surrogate trades a small, measured error for speed, so the agent can sweep thousands of options and send only the promising ones to the reference solver.</p>
+    </div>
+    <div class="speed" id="speedChart" data-reveal></div>
+  </div>
+</section>
+
+<section class="band ruled" id="capabilities" aria-labelledby="capTitle">
+  <div class="wrap">
+    <div class="band-head" data-reveal>
+      <div class="eyebrow">What it does</div>
+      <h2 class="h2" id="capTitle">An assistant for the people who design and run cores.</h2>
+    </div>
+    <div class="caps">
+      <article class="cap" data-reveal style="--d:0"><h3>Evaluate core loading patterns</h3><p>Compare shuffle candidates side by side on k<sub>eff</sub>, power peaking and flux shape, in the time a single reference solve would take.</p><div class="prompt">Rank these 12 loading patterns by assembly peaking and show the top three maps.</div></article>
+      <article class="cap" data-reveal style="--d:1"><h3>Screen design options first</h3><p>Filter enrichment splits, poison layouts and rod programs with the surrogate. Only the survivors go on to expensive diffusion or Monte Carlo runs.</p><div class="prompt">Which enrichment splits keep k_eff between 1.00 and 1.02? Send only those to the reference solver.</div></article>
+      <article class="cap" data-reveal style="--d:2"><h3>Find problem areas in a design</h3><p>Locate hot assemblies, power tilts and flux depressions, and see how they move when a rod bank sticks or a fuel type changes.</p><div class="prompt">If bank D stays withdrawn, where does power tilt? Flag any assembly above 1.4.</div></article>
+      <article class="cap" data-reveal style="--d:3"><h3>Support judgment and training</h3><p>Explain why a core behaves the way it does, with the numbers in front of you. Useful for engineers building intuition and for teaching core physics.</p><div class="prompt">Why does inserting bank A push power toward the periphery?</div></article>
+    </div>
+    <div class="steps" aria-label="How a question is answered">
+      <div class="step" data-reveal style="--d:0"><h3>Ask</h3><p>A researcher describes the configurations or question in plain language.</p></div>
+      <div class="step" data-reveal style="--d:1"><h3>Plan</h3><p>The agent turns it into concrete core configurations: rod insertions, material swaps.</p></div>
+      <div class="step" data-reveal style="--d:2"><h3>Predict</h3><p>The ML surrogate returns k<sub>eff</sub>, 2-group flux and power maps in milliseconds.</p></div>
+      <div class="step" data-reveal style="--d:3"><h3>Verify</h3><p>Flagged or out-of-range cases run on the reference diffusion solver, with an error map.</p></div>
+      <div class="step" data-reveal style="--d:4"><h3>Report</h3><p>A summary with units, normalization and limitations, plus the maps behind it.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band ruled" id="console" aria-labelledby="consoleTitle">
+  <div class="wrap wide">
+    <div class="console-head" data-reveal>
+      <div class="band-head">
+        <div class="eyebrow">Console</div>
+        <h2 class="h2" id="consoleTitle">Edit a core. Ask the agent.</h2>
+        <p class="lede">Move rod banks, repaint assemblies and compare configurations. The assistant sits beside the map and runs the same tools you do.</p>
+      </div>
+      <div class="pills">
+        <span class="pill" id="modelPill"><span class="dot"></span>Model: connecting…</span>
+        <span class="pill" id="accPill" hidden></span>
+      </div>
+    </div>
+
+    <div class="app">
+      <aside class="pane" aria-label="Configuration">
+        <header><h2>Configuration</h2><button class="btn small" id="newCfg" type="button">New</button></header>
+        <div class="section">
+          <div class="label">Saved configurations</div>
+          <div class="configs" id="cfgList"></div>
+        </div>
+        <div class="section">
+          <div class="section-head"><div class="label">Control rod banks</div><span class="hint">% inserted</span></div>
+          <div id="banks" style="display:grid;gap:10px"></div>
+        </div>
+        <div class="section">
+          <div class="section-head"><div class="label">Core state</div></div>
+          <label class="field" for="boron">Soluble boron (ppm)<input id="boron" type="number" min="0" max="2000" step="50" value="1000"></label>
+          <p class="hint">Trained at 0, 500, 1000, 1500, 2000 ppm. Fuel 900 K, coolant 580 K (fixed).</p>
+        </div>
+        <div class="section">
+          <div class="label">Assembly editor</div>
+          <div class="palette" id="palette"></div>
+          <p class="hint">Pick a fuel type (wt% U-235, burnup in GWd/t), then click fuel assemblies to repaint them. Reflector and core boundary are fixed: the model was trained on this geometry only.</p>
+        </div>
+        <div class="section">
+          <div class="row-btns">
+            <button class="btn primary" id="predict" type="button">Predict</button>
+            <button class="btn" id="export" type="button">Export JSON</button>
+          </div>
+          <p class="hint">Predict runs the ML surrogate (milliseconds).</p>
+        </div>
+      </aside>
+
+      <div class="pane map-pane" data-dim="both" role="region" aria-label="Core map and results">
+        <header>
+          <h2 id="mapTitle">Core map</h2>
+          <div class="map-tools">
+            <div class="seg" id="dims" role="group" aria-label="2-D or 3-D view">
+              <button type="button" data-dim="2d" aria-pressed="false">2D</button>
+              <button type="button" data-dim="both" aria-pressed="true">2D + 3D</button>
+              <button type="button" data-dim="3d" aria-pressed="false">3D</button>
+            </div>
+            <div class="seg" id="scope" role="group" aria-label="Map extent">
+              <button type="button" data-full="0" aria-pressed="true">Quarter</button>
+              <button type="button" data-full="1" aria-pressed="false">Full core</button>
+            </div>
+            <div class="seg" id="views" role="group" aria-label="Map quantity"></div>
+          </div>
+        </header>
+        <div id="staleBanner" class="stale-banner" hidden>
+          <span>This configuration changed since its last prediction. Results below are out of date.</span>
+          <button class="btn small" type="button" id="staleRun">Predict</button>
+        </div>
+        <div id="oodBanner" class="stale-banner" hidden></div>
+        <div class="map-wrap">
+          <div>
+            <div class="core-frame">
+              <div class="yaxis" id="yaxis"></div>
+              <div class="coregrid" id="grid" role="grid" aria-label="Quarter-core assembly map"></div>
+              <div class="xaxis" id="xaxis"></div>
+            </div>
+            <div class="bc-notes" id="bcNotes"></div>
+            <div class="v3d" id="v3d">
+              <div class="v3d-head">
+                <span class="label">3D core</span>
+                <div class="map-tools">
+                  <div class="seg" id="v3dMode" role="group" aria-label="3-D view mode">
+                    <button type="button" data-m="core" aria-pressed="true">Core</button>
+                    <button type="button" data-m="relief" aria-pressed="false">Relief</button>
+                  </div>
+                  <button class="btn small" type="button" id="v3dCut" aria-pressed="true">Cutaway</button>
+                  <button class="btn small" type="button" id="v3dReset">Reset view</button>
+                </div>
+              </div>
+              <div class="v3d-stage" id="v3dStage">
+                <canvas id="v3dCanvas" aria-label="3-D view of the full core: assemblies colored by the selected quantity, control rods drawn at their insertion depth"></canvas>
+                <div class="v3d-axis" id="v3dAxis"></div>
+                <div class="v3d-hint">Drag to orbit · pinch or ctrl+scroll to zoom</div>
+              </div>
+              <p class="v3d-note" id="v3dNote"></p>
+            </div>
+          </div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <div class="stats" id="stats"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Configuration</th><th>k_eff</th><th>ρ (pcm)</th><th>Δρ vs first (pcm)</th><th>Assembly peaking</th><th>Peak at (row, col)</th></tr></thead>
+            <tbody id="cmpBody"></tbody>
+          </table>
+        </div>
+        <p class="source" id="sourceNote">Loading core description…</p>
+      </div>
+
+      <section class="pane chat" aria-label="Assistant">
+        <header><div class="who"><span class="live" aria-hidden="true"></span><h2>ReactorTwin agent</h2></div><span class="hint">Runs configurations for you</span></header>
+        <div class="msgs" id="msgs"></div>
+        <div class="suggest" id="suggest"></div>
+        <form class="composer" id="composer">
+          <textarea id="ask" placeholder="Ask about rod positions, power shape, reactivity…" aria-label="Message the assistant"></textarea>
+          <button class="btn primary" type="submit">Send</button>
+        </form>
+      </section>
+    </div>
+  </div>
+</section>
+
+<section class="closing" aria-labelledby="closeTitle">
+  <div class="photo"><img src="img/close-sea.jpg" alt="Clear turquoise rock pools on a green coastline" loading="lazy" data-parallax="0.22"></div>
+  <div class="wrap">
+    <h2 id="closeTitle" data-reveal>Clean energy for every community, designed faster.</h2>
+    <div class="hero-ctas" data-reveal style="--d:1"><a class="cta" href="#console">Open the console</a><a class="cta ghost" href="#top">Back to top</a></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-top"><a class="logo" href="#top" style="font-size:15px">ReactorTwin</a><span>Built at Cal Hacks 13.0</span></div>
+    <p class="credits" id="credits"></p>
+  </div>
+</footer>
+
+<div class="tooltip" id="tip" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="site.js"></script>
+<script src="console.js"></script>
+
+</body></html>

@@ -104,7 +104,10 @@ For research scientists, not the general public. Priorities: correctness, units,
 
 - Core layout editor (click assemblies to change type/enrichment), instant surrogate prediction,
   heatmaps of flux/power, `k_eff` and peaking factors.
-- Button to run the reference solver (`ndiffusion`) on the same layout and show the error map.
+- Reference solver (`ndiffusion`) is not in the UI (decluttered for the MVP); it stays available
+  via `POST /solve` and the agent's `verify_with_reference` tool. Report accuracy from the test set.
+- Agent chat (`POST /chat`) runs the same surrogate as the console, starting from the core on
+  screen; configurations it evaluates are added to the console list.
 - Show uncertainty or an out-of-distribution warning when inputs fall outside the training range.
 - Every displayed quantity has units and normalization stated.
 - Export: layout + results as JSON/CSV.

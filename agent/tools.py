@@ -1,9 +1,13 @@
-"""Tools the agent calls. Each returns JSON text; numbers carry units in their key names."""
+"""Tools the agent calls. Each returns JSON text; numbers carry units in their key names.
+
+All predictions come from the trained surrogate (`agent.backends.default_backend()`), on the same
+core the web console edits. Configurations start from the session's base core (the layout and
+boron the scientist has on screen) and apply rod positions and assembly swaps on top.
+"""
 
 from __future__ import annotations
 
 import json
-import time
 from dataclasses import dataclass, field
 from typing import Literal, NotRequired
 
@@ -12,9 +16,7 @@ from anthropic import beta_tool
 from anthropic.lib.tools import ToolError
 from typing_extensions import TypedDict
 
-from agent.backends import Backend, default_backend
-from agent.core import MATERIALS, Core
-from agent.fv_solver import FVSolution
+from agent.backends import CoreService, LayoutError, default_backend
 
 MAX_CONFIGS = 12
 
@@ -22,121 +24,133 @@ MAX_CONFIGS = 12
 class MaterialChange(TypedDict):
     row: int
     col: int
-    material: str
+    material_id: int
 
 
 class Configuration(TypedDict):
     label: str
     rods: NotRequired[dict[str, float]]
+    boron_ppm: NotRequired[float]
     material_changes: NotRequired[list[MaterialChange]]
 
 
 @dataclass
 class Result:
-    config: Configuration
-    layout: list[list[str]]
-    fuel_mask: np.ndarray
-    sol: FVSolution
+    label: str
+    layout: list[list[int]]
+    rods: dict[str, float]
+    boron_ppm: float
+    out: dict  # CoreService.predict output
+    ref: dict | None = None  # CoreService.solve output, if verified
 
 
 @dataclass
 class Session:
-    core: Core = field(default_factory=Core)
-    backend: Backend = field(default_factory=default_backend)
+    service: CoreService = field(default_factory=default_backend)
+    base_layout: list[list[int]] | None = None  # None -> the service's default loading pattern
+    base_rods: dict[str, float] = field(default_factory=dict)
+    base_boron_ppm: float = 1000.0
     results: dict[str, Result] = field(default_factory=dict)
+    new_labels: list[str] = field(default_factory=list)  # evaluated during the current turn
+
+    def layout(self) -> list[list[int]]:
+        return [list(r) for r in (self.base_layout or self.service.default_layout())]
 
 
 def _rho_pcm(k: float) -> float:
     return (k - 1.0) / k * 1e5
 
 
-def _loc(a: np.ndarray, mask: np.ndarray) -> list[int]:
-    return [int(v) for v in np.unravel_index(np.where(mask, a, -np.inf).argmax(), a.shape)]
+def _arr(grid) -> np.ndarray:
+    return np.array([[np.nan if v is None else v for v in row] for row in grid], dtype=float)
+
+
+def _loc(a: np.ndarray) -> list[int]:
+    return [int(v) for v in np.unravel_index(np.nanargmax(a), a.shape)]
 
 
 def _grid(a: np.ndarray, digits: int) -> list[list[float | None]]:
     return [[None if np.isnan(v) else round(float(v), digits) for v in row] for row in a]
 
 
-def _summary(r: Result, ref: Result | None) -> dict:
-    s, m = r.sol, r.fuel_mask
+def _summary(r: Result, first: Result | None) -> dict:
+    o = r.out
     out = {
-        "label": r.config["label"],
-        "rods_inserted_fraction": r.config.get("rods", {}),
-        "material_changes": r.config.get("material_changes", []),
-        "k_eff": round(s.k_eff, 5),
-        "reactivity_pcm": round(_rho_pcm(s.k_eff), 1),
-        "assembly_radial_peaking": round(float(s.power[m].max()), 3),
-        "peak_power_assembly_row_col": _loc(s.power, m),
-        # Mean fuel thermal flux is not reported: with power normalized to 1 and the same nuSf2 in
-        # every fuel type it is a constant. The spectral ratio carries the information.
-        "fast_flux_fuel_mean": round(float(s.flux[0][m].mean()), 4),
-        "thermal_to_fast_flux_ratio_fuel_mean": round(float((s.flux[1][m] / s.flux[0][m]).mean()), 4),
-        "thermal_flux_max_row_col": _loc(s.flux[1], m),
-        "thermal_flux_min_fuel_row_col": _loc(-s.flux[1], m),
-        "power_map": _grid(np.where(m, s.power, np.nan), 3),
+        "label": r.label,
+        "rods_inserted_fraction": r.rods,
+        "boron_ppm": r.boron_ppm,
+        "k_eff": round(o["k_eff"], 5),
+        "reactivity_pcm": round(_rho_pcm(o["k_eff"]), 1),
+        "assembly_peaking": o["assembly_peaking"],
+        "peak_assembly_row_col": o["assembly_peak_row_col"],
+        "mesh_cell_peaking": o["node_peaking"],
+        "power_map_assembly": _grid(_arr(o["power"]), 3),
     }
-    if ref is not None and ref is not r:
-        out["delta_rho_vs_" + ref.config["label"] + "_pcm"] = round(_rho_pcm(s.k_eff) - _rho_pcm(ref.sol.k_eff), 1)
-        both = m & ref.fuel_mask
-        rel = np.zeros_like(s.power)
-        rel[both] = (s.power[both] - ref.sol.power[both]) / ref.sol.power[both] * 100
-        out["power_change_vs_" + ref.config["label"] + "_pct"] = {
-            "max_increase": round(float(rel[both].max()), 2),
-            "max_increase_row_col": _loc(rel, both),
-            "max_decrease": round(float(rel[both].min()), 2),
-            "max_decrease_row_col": _loc(-rel, both),
+    if o["warnings"]:
+        out["warnings"] = o["warnings"]
+    if first is not None and first is not r:
+        out[f"delta_rho_vs_{first.label}_pcm"] = round(
+            _rho_pcm(o["k_eff"]) - _rho_pcm(first.out["k_eff"]), 1
+        )
+        p, p0 = _arr(o["power"]), _arr(first.out["power"])
+        rel = (p - p0) / p0 * 100
+        out[f"power_change_vs_{first.label}_pct"] = {
+            "max_increase": round(float(np.nanmax(rel)), 2),
+            "max_increase_row_col": _loc(rel),
+            "max_decrease": round(float(np.nanmin(rel)), 2),
+            "max_decrease_row_col": _loc(-rel),
         }
     return out
 
 
 def make_tools(session: Session) -> list:
-    core = session.core
+    svc = session.service
 
     @beta_tool
     def describe_core() -> str:
-        """Describe the current core model: grid and coordinate convention, materials, rod banks, the prediction backend, units, and known limitations. Call this before the first evaluation in a conversation."""
-        H, W = core.shape
+        """Describe the core the scientist is working on: grid and coordinate convention, the current layout (material ids), materials, rod banks, current boron, units, model accuracy, and limitations. Call this before the first evaluation in a conversation."""
+        d = svc.describe()
         return json.dumps(
             {
-                "grid": f"{H}x{W} assemblies, quarter core, pitch {core.pitch_cm} cm",
-                "coordinates": "map[row][col]; row 0 / col 0 lie on the core-centre symmetry lines "
-                "(reflective boundary along assembly faces); the last row/col face the vacuum "
-                "boundary. Assembly (0,0) touches the core centre; by symmetry it stands for the "
-                "central 2x2 assemblies of the full core, and a bank position stands for its mirror images.",
-                "layout": core.layout,
-                "materials": {
-                    k: {"fuel": v["fuel"], "source": v["note"], "xs_cm-1": dict(zip(
-                        ("D1_cm", "D2_cm", "sig_r1", "sig_r2", "nu_sig_f1", "nu_sig_f2", "sig_s12"),
-                        np.round(v["xs"], 5).tolist()))}
-                    for k, v in MATERIALS.items()
-                },
-                "rod_banks_row_col": core.banks,
-                "rod_insertion": "fraction 0 (withdrawn, default) to 1 (fully inserted) per bank",
-                "backend": session.backend.name,
-                "outputs": {
-                    "k_eff": "absolute multiplication factor",
-                    "reactivity_pcm": "(k-1)/k * 1e5",
-                    "power": "assembly-average fission rate, normalized to mean 1 over fuel assemblies",
-                    "flux": "assembly-average 2-group scalar flux (group 1 fast, group 2 thermal), "
-                    "same normalization as power (relative units)",
-                    "assembly_radial_peaking": "max assembly power / mean (pin-level Fq, F_dH not available)",
-                },
+                "grid": f"{d['grid'][0]}x{d['grid'][1]} quarter-core assemblies, pitch {d['assembly_pitch_cm']} cm",
+                "coordinates": "layout[row][col]; row 0 / col 0 lie on the core-centre symmetry "
+                "planes (reflective) and are half assemblies; the outer edge is vacuum. "
+                "(0,0) is the core centre. A position stands for its mirror images in the full core.",
+                "current_layout_material_ids": session.layout(),
+                "layout_legend": "-1 = outside the core, "
+                + ", ".join(f"{m['id']} = {m['name']}" for m in d["materials"]),
+                "editable": "Only fuel positions can change, and only between fuel ids 0-5. "
+                "Reflector and boundary positions are fixed (training geometry).",
+                "rod_banks_row_col": d["banks"],
+                "current_rods_inserted_fraction": session.base_rods,
+                "current_boron_ppm": session.base_boron_ppm,
+                "training_ranges": d["training_ranges"],
+                "backend": d["model"],
+                "units": d["units"],
                 "limitations": [
-                    "Research surrogate output, not safety-grade.",
-                    "Placeholder XS (IAEA 2-D benchmark), not the project's OpenMC-derived set.",
-                    "Partial rod insertion is a volume-weighted 2-D XS blend; overstates partial-bank worth.",
-                    "No boron, temperature, or burnup feedback in this model.",
+                    (
+                        f"Surrogate test error: k_eff MAE {d['model']['test_k_mae_pcm']:.0f} pcm "
+                        f"(p95 {d['model']['test_k_p95_pcm']:.0f} pcm), assembly power ~"
+                        f"{d['model']['test_power_rel_l2'] * 100:.1f}% relative L2. Differences "
+                        "between similar configurations (rod worths) are more reliable than "
+                        "absolute k_eff."
+                    ),
+                    "Rod banks were trained fully in or fully out; partial insertion extrapolates.",
+                    (
+                        "Fixed fuel 900 K and coolant 580 K: no temperature feedback. No axial "
+                        "model, so no Fq; mesh-cell peaking is the finest radial measure."
+                    ),
+                    d["scope"],
                 ],
             }
         )
 
     @beta_tool
     def evaluate_configurations(configurations: list[Configuration]) -> str:
-        """Run the core model on one or more configurations and return k_eff, reactivity, power and flux summaries for each. Put every configuration the scientist wants compared in a single call. The first configuration is the reference for delta-reactivity and power-change fields. Results are stored by label for get_map.
+        """Run the trained surrogate on one or more configurations and return k_eff, reactivity, peaking and assembly power maps for each. Put every configuration to be compared in a single call. The first configuration is the reference for delta-reactivity and power-change fields. Each configuration starts from the scientist's current core (layout and boron). Results are stored by label for get_map and verify_with_reference, and appear in the scientist's console.
 
         Args:
-            configurations: Up to 12 configurations. Each has a unique `label`, optional `rods` mapping bank name to inserted fraction 0..1 (banks not listed are withdrawn), and optional `material_changes` [{row, col, material}] swapping assembly materials.
+            configurations: Up to 12 configurations. Each has a unique `label`; optional `rods` mapping bank id ("1".."8") to inserted fraction 0..1 (banks not listed are withdrawn); optional `boron_ppm` (0-2000, default: the current core's boron); optional `material_changes` [{row, col, material_id}] swapping fuel assemblies.
         """
         if not configurations:
             raise ToolError("give at least one configuration")
@@ -145,21 +159,27 @@ def make_tools(session: Session) -> list:
         labels = [c["label"] for c in configurations]
         if len(set(labels)) != len(labels):
             raise ToolError(f"labels must be unique, got {labels}")
-        out, ref = [], None
+        out, first = [], None
         for cfg in configurations:
-            changes = [(c["row"], c["col"], c["material"]) for c in cfg.get("material_changes", [])]
+            layout = session.layout()
+            for ch in cfg.get("material_changes", []):
+                i, j = ch["row"], ch["col"]
+                if not (0 <= i < len(layout) and 0 <= j < len(layout[0])):
+                    raise ToolError(f"configuration {cfg['label']!r}: ({i}, {j}) outside the grid")
+                layout[i][j] = ch["material_id"]
+            rods = {str(b): float(f) for b, f in cfg.get("rods", {}).items() if f > 0}
+            boron = float(cfg.get("boron_ppm", session.base_boron_ppm))
             try:
-                xs, layout = core.build_xs(cfg.get("rods", {}), changes)
-            except ValueError as e:
+                pred = svc.predict(layout, rods, boron)
+            except LayoutError as e:
                 raise ToolError(f"configuration {cfg['label']!r}: {e}") from e
-            mask = core.fuel_mask(layout)
-            t0 = time.perf_counter()
-            sol = session.backend.predict(xs, core.pitch_cm, mask)
-            r = Result(cfg, layout, mask, sol)
-            session.results[cfg["label"]] = r
-            ref = ref or r
-            out.append({**_summary(r, ref), "compute_ms": round((time.perf_counter() - t0) * 1e3, 1)})
-        return json.dumps({"backend": session.backend.name, "results": out})
+            r = Result(cfg["label"], layout, rods, boron, pred)
+            session.results[r.label] = r
+            if r.label not in session.new_labels:
+                session.new_labels.append(r.label)
+            first = first or r
+            out.append({**_summary(r, first), "compute_ms": pred["compute_ms"]})
+        return json.dumps({"backend": svc.describe_model_short(), "results": out})
 
     @beta_tool
     def get_map(
@@ -167,12 +187,12 @@ def make_tools(session: Session) -> list:
         quantity: Literal["power", "fast_flux", "thermal_flux", "material"],
         relative_to: str | None = None,
     ) -> str:
-        """Return a full assembly map for an evaluated configuration, optionally as percent change against another evaluated configuration. Use for spatial questions (tilts, where flux is depressed) that the summaries do not answer.
+        """Return a full assembly map for an evaluated configuration, optionally as percent change against another evaluated configuration. Use for spatial questions (tilts, flux depressions, shadowing) that the summaries do not answer.
 
         Args:
             label: Label of a configuration already run with evaluate_configurations.
-            quantity: Which map. Flux is in the same relative units as power.
-            relative_to: Optional second label; returns 100 * (label - relative_to) / relative_to over fuel assemblies.
+            quantity: Which map. Flux is in 1e-5 cm^-2 with the integral of (phi1 + phi2) over the quarter core = 1.
+            relative_to: Optional second label; returns 100 * (label - relative_to) / relative_to.
         """
         for lab in (label, relative_to):
             if lab is not None and lab not in session.results:
@@ -180,16 +200,60 @@ def make_tools(session: Session) -> list:
         r = session.results[label]
         if quantity == "material":
             return json.dumps({"label": label, "map": r.layout})
-        pick = {"power": lambda s: s.power, "fast_flux": lambda s: s.flux[0], "thermal_flux": lambda s: s.flux[1]}[quantity]
-        a = pick(r.sol)
+        key = {"power": "power", "fast_flux": "fast", "thermal_flux": "thermal"}[quantity]
+        a = _arr(r.out[key])
         if relative_to is None:
-            return json.dumps({"label": label, "quantity": quantity, "units": "relative (mean fuel power = 1)",
-                               "map": _grid(np.where(r.fuel_mask | (quantity != "power"), a, np.nan), 4)})
-        o = session.results[relative_to]
-        both = r.fuel_mask & o.fuel_mask
-        rel = np.full_like(a, np.nan)
-        rel[both] = (a[both] - pick(o.sol)[both]) / pick(o.sol)[both] * 100
-        return json.dumps({"label": label, "relative_to": relative_to, "quantity": quantity,
-                           "units": "percent change, fuel assemblies only", "map": _grid(rel, 2)})
+            units = (
+                "relative, mean 1 over fuel cells (assembly mean)"
+                if key == "power"
+                else r.out["flux_unit"]
+            )
+            return json.dumps({"label": label, "quantity": quantity, "units": units, "map": _grid(a, 4)})
+        b = _arr(session.results[relative_to].out[key])
+        rel = (a - b) / b * 100
+        return json.dumps(
+            {
+                "label": label,
+                "relative_to": relative_to,
+                "quantity": quantity,
+                "units": "percent change",
+                "map": _grid(rel, 2),
+            }
+        )
 
-    return [describe_core, evaluate_configurations, get_map]
+    @beta_tool
+    def verify_with_reference(label: str) -> str:
+        """Re-run an evaluated configuration with the reference 2-group diffusion solver (ndiffusion, ~1 s) and report the surrogate's error. Use sparingly: for the configuration a conclusion rests on, when the scientist asks for confirmation, or when the surrogate result carries warnings.
+
+        Args:
+            label: Label of a configuration already run with evaluate_configurations.
+        """
+        if label not in session.results:
+            raise ToolError(f"no results for {label!r}; evaluated: {sorted(session.results)}")
+        r = session.results[label]
+        try:
+            ref = svc.solve(r.layout, r.rods, r.boron_ppm)
+        except (LayoutError, RuntimeError) as e:
+            raise ToolError(f"reference solve failed: {e}") from e
+        r.ref = ref
+        p, pr = _arr(r.out["power"]), _arr(ref["power"])
+        err = (p - pr) / pr * 100
+        return json.dumps(
+            {
+                "label": label,
+                "reference": ref["source"],
+                "k_eff_reference": round(ref["k_eff"], 5),
+                "k_eff_surrogate": round(r.out["k_eff"], 5),
+                "surrogate_k_error_pcm": round((r.out["k_eff"] - ref["k_eff"]) * 1e5, 1),
+                "assembly_peaking_reference": ref["assembly_peaking"],
+                "assembly_peaking_surrogate": r.out["assembly_peaking"],
+                "assembly_power_error_pct": {
+                    "max_abs": round(float(np.nanmax(np.abs(err))), 2),
+                    "at_row_col": _loc(np.abs(err)),
+                    "rms": round(float(np.sqrt(np.nanmean(err**2))), 2),
+                },
+                "reference_seconds": round(ref["compute_ms"] / 1000, 2),
+            }
+        )
+
+    return [describe_core, evaluate_configurations, get_map, verify_with_reference]
