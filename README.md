@@ -3,7 +3,22 @@
 Cal Hacks project: ML surrogate that predicts `k_eff`, flux, and power maps for 2-D PWR core
 layouts, with a UI for research scientists. See [CLAUDE.md](CLAUDE.md) for design and conventions.
 
-## Setup
+## Open the website
+
+Requires Python 3.11+ on macOS or Linux (on Windows, use WSL2). No GPU or dataset needed.
+
+```bash
+git clone https://github.com/DebuRatnam/Cal-Hacks-13.0-TwinReactor.git
+cd Cal-Hacks-13.0-TwinReactor
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[model,backend,agent]"
+export ANTHROPIC_API_KEY=...   # optional: only the NIA chat needs it
+python -m uvicorn backend.app:app
+```
+
+Then open <http://127.0.0.1:8000>. The first install downloads PyTorch (several hundred MB).
+
+## Development setup
 
 ```bash
 conda env create -f environment.yml   # includes OpenMC
