@@ -1,0 +1,16 @@
+{
+  "main_commit": "6e3b60d20b409be751fa25905f02f4253fd32a5d",
+  "samples": 5000,
+  "max_batch_mean_relative_squared_fv_residual": 9.99388862923919e-17,
+  "max_sample_relative_squared_fv_residual": 1.5112921794723443e-16,
+  "max_absolute_rayleigh_k_error": 1.4628536160188332e-08,
+  "max_rayleigh_k_error_pcm": 0.0014628536160188332,
+  "first_8_orientation_check_losses": {
+    "unchanged": 8.802789076199752e-17,
+    "row_flip": 0.7056693610981388,
+    "column_flip": 0.6742950562927257
+  },
+  "first_case_distinct_resolved_material_rows": 8,
+  "per_case_table_reconstruction_exact": true,
+  "orientation": "[row,column]=[y,x]; row 0 south, column 0 west; physical cell centers ((column+.5)*h,(row+.5)*h)"
+}

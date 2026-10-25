@@ -1,0 +1,7 @@
+version: v3-nrc-uox-boron-5000
+# Independent random stream from the 100-case pilot (seed 20261028).
+seed: 20261029
+n_samples: 5000
+burnup_states_gwd_t: [0.15, 17.5, 37.5]
+boron_states_ppm: [0, 500, 1000, 1500, 2000]
+age_mix_concentration: 0.3

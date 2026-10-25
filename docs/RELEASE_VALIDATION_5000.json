@@ -1,0 +1,89 @@
+{
+  "samples": 5000,
+  "input_shape": [
+    5000,
+    7,
+    68,
+    68
+  ],
+  "flux_shape": [
+    5000,
+    2,
+    68,
+    68
+  ],
+  "splits": {
+    "train": 3999,
+    "val": 489,
+    "test": 512
+  },
+  "max_flux_integral_error": 4.440892098500626e-16,
+  "max_fuel_mean_power_error": 4.440892098500626e-16,
+  "scope": "Adapted 2D UO2-only NRC-library study, fixed 900 K fuel and 580 K coolant; 0-2000 ppm interpolated boron. Plain diffusion without assembly discontinuity factors; not a reproduction of the mixed-MOX benchmark.",
+  "grid_orientation": "row0_south_col0_west",
+  "pitch_cm": 2.6775,
+  "boundary_gamma": 0.4692,
+  "python": "3.14.2",
+  "platform": "macOS-26.0-arm64-arm-64bit-Mach-O",
+  "packages": {
+    "ndiffusion": "1.1.0",
+    "numpy": "2.5.4",
+    "h5py": "3.16.0",
+    "torch": "2.14.1",
+    "nvidia-physicsnemo": "2.2.2"
+  },
+  "architectures": {
+    "fno": {
+      "forward_and_backward": "passed",
+      "output_shapes": {
+        "flux": [
+          2,
+          2,
+          68,
+          68
+        ],
+        "power": [
+          2,
+          68,
+          68
+        ],
+        "k": [
+          2
+        ]
+      }
+    },
+    "cnn": {
+      "forward_and_backward": "passed",
+      "output_shapes": {
+        "flux": [
+          2,
+          2,
+          68,
+          68
+        ],
+        "power": [
+          2,
+          68,
+          68
+        ],
+        "k": [
+          2
+        ]
+      }
+    },
+    "pinn": {
+      "forward_and_backward": "passed",
+      "mode": "one configuration",
+      "reference_points": [
+        4112,
+        2
+      ],
+      "interface_width_cm": 0.5,
+      "caveat": "Existing PINN smooths material interfaces; this check verifies its data interface, not trained accuracy"
+    }
+  },
+  "max_batch_mean_relative_squared_fv_residual": 9.99388862923919e-17,
+  "max_sample_relative_squared_fv_residual": 1.5112921794723443e-16,
+  "max_absolute_rayleigh_k_error": 1.4628536160188332e-08,
+  "training_performed": false
+}

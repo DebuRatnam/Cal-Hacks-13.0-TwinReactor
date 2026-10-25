@@ -1,0 +1,9 @@
+# Input preparation only: python -m datagen.iid_cases --config ... --out plan
+# Physics generation, only when requested: python -m datagen.ndiffusion_gen --config ... --out data/v2
+version: v2-iaea-iid-quarter
+seed: 20261024
+n_samples: 1000
+sampling:
+  template: iaea_explicit_examples.json
+  geometry: quarter
+  distribution: uniform_count_then_uniform_subset

@@ -16,9 +16,18 @@ Without OpenMC: `pip install -e ".[model,backend,dev]"`.
 ## Workflow
 
 ```bash
-python -m datagen.ndiffusion_gen --config datagen/configs/quarter_core_small.yaml --out data/v0
-python -m model.train --data data/v0 --out checkpoints/v0
-python -m model.evaluate --data data/v0 --ckpt checkpoints/v0
-uvicorn backend.app:app --reload
+bash scripts/get_dataset.sh data/released_5000
+unzip data/released_5000/twinreactor-material-boron-5000.zip -d data/released_5000
+python -m model.check_data --data data/released_5000/material_boron_5000 --models --report data/validation.json
 pytest
+```
+
+For the full-field dataset, configurable material/rod inputs, and FNO/CNN/PINN
+adapters, see [the data handoff](docs/DATA_HANDOFF.md). The generation command is
+working; the original training and evaluation entry points remain placeholders.
+The [Claude next-steps guide](docs/CLAUDE_DATA_NEXT_STEPS.md) identifies the remaining
+training, normalization, evaluation and runtime-agent integration work. Generation:
+
+```bash
+python -m datagen.tabulated_cases --config datagen/configs/material_boron_5000.yaml --out data/new_5000
 ```

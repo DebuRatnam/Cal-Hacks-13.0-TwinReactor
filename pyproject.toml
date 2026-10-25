@@ -25,6 +25,9 @@ dev = ["pytest", "ruff"]
 [tool.setuptools.packages.find]
 include = ["datagen*", "model*", "backend*", "agent*"]
 
+[tool.setuptools.package-data]
+datagen = ["library/nrc_mox_helios/*", "configs/*"]
+
 [tool.ruff]
 line-length = 100
 

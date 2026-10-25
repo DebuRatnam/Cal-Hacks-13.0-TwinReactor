@@ -1,0 +1,8 @@
+version: v3-nrc-uox-boron-100
+seed: 20261028
+n_samples: 100
+burnup_states_gwd_t: [0.15, 17.5, 37.5]
+boron_states_ppm: [0, 500, 1000, 1500, 2000]
+# A common Dirichlet draw lets each case explore different fuel-age inventories.
+# This is a sampling choice, not an assumed physical coefficient.
+age_mix_concentration: 0.3

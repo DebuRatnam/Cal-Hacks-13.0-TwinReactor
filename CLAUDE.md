@@ -1,5 +1,13 @@
 # CLAUDE.md
 
+## Current data handoff
+
+Read [docs/CLAUDE_DATA_NEXT_STEPS.md](docs/CLAUDE_DATA_NEXT_STEPS.md) before changing
+training, evaluation, or the runtime agent's material mapping. The released 5,000-case v3
+dataset uses resolved coefficient inputs, not one-hot semantic material IDs. Its row-0-south
+orientation is verified. The default runtime agent still uses a different placeholder IAEA
+core and must not silently feed its inputs to a checkpoint trained on this release.
+
 Cal Hacks project: ML surrogate for 2-D PWR core neutronics, with a UI for research scientists.
 
 ## Goal
@@ -66,7 +74,8 @@ Parameters to vary per sample (start small, widen later):
 - Fuel/moderator temperature (only if the XS pipeline supports it)
 
 Use Latin hypercube or Sobol sampling for continuous params, random valid layouts for discrete ones.
-Reject physically invalid configs (e.g. `k_eff` far outside ~0.8–1.4) and log why.
+Reject invalid coefficients or failed/nonfinite solves and log why. The released v3
+sampling law keeps all converged input draws; do not filter or rebalance it by `k_eff`.
 
 ## Data format
 

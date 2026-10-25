@@ -9,36 +9,40 @@ Sr_g is the removal XS (absorption + out-scatter, plus D_g B_z^2 axial buckling 
 includes it). Units: cm, cm^-1.
 
 Two residual implementations:
-- `fv_residual`: batched cell-centered finite-volume residual on the assembly grid (FNO/CNN
+- `fv_residual`: batched cell-centered finite-volume residual on the numerical grid (FNO/CNN
   physics loss). Harmonic-mean interface D, same as a standard FV diffusion code.
 - `TwoGroupDiffusion` / `DiffusionBC`: symbolic PhysicsNeMo PDEs for pointwise autodiff
   residuals (PINN).
 
-Grid convention: tensors are [..., H, W] with index [i, j] = [y, x], row 0 at y = 0 ("south"),
-column 0 at x = 0 ("west"). Quarter core: reflective on west/south, vacuum on east/north.
-REVIEW (EECS): confirm this matches the datagen material_map orientation.
+Confirmed datagen convention: tensors are [..., H, W], index [i, j] = [y, x].
+Row 0 is the southernmost cell row; column 0 is west. Cell centers are
+x=(j+0.5)*h, y=(i+0.5)*h; south/west faces are at zero. Quarter core: reflective
+on west/south, vacuum on east/north and exposed stepped boundaries. See
+tests/test_data_compatibility.py and docs/DATA_HANDOFF.md for verification.
 """
 
 from __future__ import annotations
 
 import torch
+from physicsnemo.sym.eq.pde import PDE
 from sympy import Function, Symbol
 
-from physicsnemo.sym.eq.pde import PDE
+from datagen.physics_contract import MARSHAK, QUARTER_CORE_BC, XS_FIELDS
 
 # Per-material XS columns, in this order, everywhere in the model package.
-XS_FIELDS = ("D1", "D2", "sig_r1", "sig_r2", "nu_sig_f1", "nu_sig_f2", "sig_s12")
 N_XS = len(XS_FIELDS)
 
 # Vacuum boundary coefficient gamma in D dphi/dn + gamma phi = 0.
 # Marshak = 0.5; the IAEA 2-D benchmark specifies 0.4692.
-MARSHAK = 0.5
-
-QUARTER_CORE_BC = {"west": "reflective", "south": "reflective", "east": "vacuum", "north": "vacuum"}
 
 
 def xs_maps(material_map: torch.Tensor, xs_table: torch.Tensor) -> torch.Tensor:
-    """Per-cell XS fields. material_map [B, H, W] long, xs_table [n_mat, N_XS] -> [B, N_XS, H, W]."""
+    """Physics IDs [B,H,W] and matching table [n_mat,7] -> coefficient maps.
+
+    For v3 data use batch['xs'] directly: semantic material IDs do not encode
+    the case's boron and local rod states. compact_xs supplies matching physics
+    IDs/table when that representation is needed (e.g. a per-case PINN).
+    """
     return xs_table[material_map].permute(0, 3, 1, 2)
 
 
@@ -79,7 +83,9 @@ def _leakage(
         for side, idx in ((lo, 0), (hi, phi.shape[axis] - 1)):
             if bc[side] == "vacuum":
                 c = phi.narrow(axis, idx, 1)
-                out.narrow(axis, idx, 1).add_(_vacuum_current(c, D.narrow(axis, idx, 1), h_cm, gamma))
+                out.narrow(axis, idx, 1).add_(
+                    _vacuum_current(c, D.narrow(axis, idx, 1), h_cm, gamma)
+                )
             elif bc[side] != "reflective":
                 raise ValueError(f"unknown bc {bc[side]!r} on {side}")
     out = out / h_cm
@@ -88,7 +94,9 @@ def _leakage(
     return out
 
 
-def _vacuum_current(phi_c: torch.Tensor, D: torch.Tensor, h_cm: float, gamma: float) -> torch.Tensor:
+def _vacuum_current(
+    phi_c: torch.Tensor, D: torch.Tensor, h_cm: float, gamma: float
+) -> torch.Tensor:
     """Outgoing current through a face with D dphi/dn + gamma phi = 0, half a cell from phi_c."""
     a = 2 * D / h_cm
     return gamma * a * phi_c / (a + gamma)
@@ -119,7 +127,9 @@ def fv_residual(
     return r
 
 
-def physics_loss(flux, k_eff, xs, h_cm, bc=QUARTER_CORE_BC, gamma=MARSHAK, void=None) -> torch.Tensor:
+def physics_loss(
+    flux, k_eff, xs, h_cm, bc=QUARTER_CORE_BC, gamma=MARSHAK, void=None
+) -> torch.Tensor:
     """Scale-free mean-square FV residual: ||r||^2 / ||fission source||^2, averaged over batch.
 
     Invariant to the overall flux amplitude (the eigenproblem fixes shape only), so it can be
