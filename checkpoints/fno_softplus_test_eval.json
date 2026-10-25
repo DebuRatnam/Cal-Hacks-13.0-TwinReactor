@@ -1,0 +1,32 @@
+{
+  "samples": 512,
+  "k_mae_pcm": 202.42120241694607,
+  "k_rmse_pcm": 275.0090886797816,
+  "k_p95_abs_pcm": 536.3230355235243,
+  "flux_fast_relative_l2_mean": 0.061050945985402574,
+  "flux_thermal_relative_l2_mean": 0.06844845986710071,
+  "power_relative_l2_mean": 0.066201064401963,
+  "field_relative_l2_mean": 0.0652334900848221,
+  "field_relative_l2_p95": 0.1641744635462393,
+  "negative_flux_fraction": 0.0,
+  "normalized_score": 0.02553516144548254,
+  "criticality_groups": {
+    "subcritical_below_0.99": {
+      "count": 175,
+      "k_mae_pcm": 226.11711895650427
+    },
+    "near_critical_0.99_to_1.01": {
+      "count": 35,
+      "k_mae_pcm": 172.63394513464684
+    },
+    "supercritical_above_1.01": {
+      "count": 302,
+      "k_mae_pcm": 192.1422905310447
+    }
+  },
+  "fv_relative_squared_residual_batch_mean": 0.002898652857692809,
+  "rayleigh_vs_head_mae_pcm": 862.6458652154945,
+  "rayleigh_nonfinite_fraction": 0.0,
+  "flux_integral_mae": 0.01584137865212841,
+  "latency_single_case_ms": 1.5974791022017598
+}

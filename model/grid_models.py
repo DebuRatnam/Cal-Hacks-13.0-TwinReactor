@@ -22,7 +22,7 @@ from physicsnemo.models.pix2pix import Pix2Pix
 def _split(out: torch.Tensor, n_groups: int) -> dict[str, torch.Tensor]:
     """Channels: [flux_1..flux_G, power, k-field]; k = spatial mean of the k-field."""
     return {
-        "flux": out[:, :n_groups],
+        "flux": torch.nn.functional.softplus(out[:, :n_groups]),
         "power": out[:, n_groups],
         "k": out[:, n_groups + 1].mean(dim=(-2, -1)),
     }
